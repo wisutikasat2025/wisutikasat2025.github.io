@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรับสมัคร - หนูน้อยสงกรานต์วิสุทธิกษัตริย์ ๒๕๖๙</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #fdf6e3;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-top: 5px solid #e67e22;
+        }
+        h2 {
+            text-align: center;
+            color: #d35400;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed #eee;
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        .required-star {
+            color: red;
+        }
+        input[type="text"], input[type="number"], input[type="file"], input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        input[type="file"] {
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        button[type="submit"] {
+            width: 100%;
+            padding: 15px;
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 20px;
+        }
+        button[type="submit"]:hover {
+            background-color: #d35400;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🌸 ใบสมัครประกวดหนูน้อย<br>ประเพณีสงกรานต์วิสุทธิกษัตริย์ พ.ศ. ๒๕๖๙</h2>
+    
+    <form id="dynamicForm">
+        <div id="form-content"></div>
+        <button type="submit" id="submitBtn">ส่งใบสมัคร</button>
+    </form>
+</div>
+
+<script>
+    // 1. ข้อมูลจำลอง (Mock Data) โครงสร้างคำถาม
+    // ในอนาคต โค้ดส่วนนี้จะถูกแทนที่ด้วยการดึงข้อมูลจาก Firebase ที่แอดมินตั้งค่าไว้
+    const questionDatabase = [
+        { id: "q_name", label: "ชื่อ-นามสกุล (ด.ช./ด.ญ.)", type: "text", isRequired: true, placeholder: "ระบุชื่อและนามสกุล" },
+        { id: "q_nickname", label: "ชื่อเล่น", type: "text", isRequired: true, placeholder: "" },
+        { id: "q_dob", label: "วัน / เดือน / ปีเกิด", type: "date", isRequired: true, placeholder: "" },
+        { id: "q_address", label: "ที่อยู่พักอาศัย", type: "text", isRequired: true, placeholder: "บ้านเลขที่, ถนน, ตำบล, อำเภอ, จังหวัด" },
+        { id: "q_talent", label: "ความสามารถพิเศษ (หากไม่มี ให้ใส่ - )", type: "text", isRequired: true, placeholder: "" },
+        { id: "q_pic_face", label: "รูปถ่ายหน้าตรง ๑ รูป (ขนาดสูงสุด 10 MB)", type: "file", isRequired: true, placeholder: "" },
+        { id: "q_pic_full", label: "รูปถ่ายเต็มตัว ๑ รูป (ขนาดสูงสุด 10 MB)", type: "file", isRequired: true, placeholder: "" }
+    ];
+
+    // 2. ฟังก์ชันสำหรับสร้างหน้าฟอร์มจากข้อมูลด้านบน
+    function renderForm() {
+        const formContent = document.getElementById('form-content');
+        formContent.innerHTML = ''; // ล้างค่าเดิมก่อนสร้างใหม่
+
+        questionDatabase.forEach(q => {
+            // สร้างกรอบ (div) สำหรับแต่ละคำถาม
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'form-group';
+
+            // สร้างป้ายกำกับ (label)
+            const labelStr = q.isRequired ? `${q.label} <span class="required-star">*</span>` : q.label;
+            const labelHtml = `<label for="${q.id}">${labelStr}</label>`;
+
+            // สร้างช่องกรอกข้อมูล (input)
+            let inputHtml = '';
+            if (q.type === 'file') {
+                inputHtml = `<input type="file" id="${q.id}" name="${q.id}" accept="image/*,application/pdf" ${q.isRequired ? 'required' : ''}>`;
+            } else {
+                inputHtml = `<input type="${q.type}" id="${q.id}" name="${q.id}" placeholder="${q.placeholder}" ${q.isRequired ? 'required' : ''}>`;
+            }
+
+            // จับประกอบร่างแล้วยัดลงในฟอร์ม
+            groupDiv.innerHTML = labelHtml + inputHtml;
+            formContent.appendChild(groupDiv);
+        });
+    }
+
+    // 3. สั่งให้ฟังก์ชันทำงานทันทีที่เปิดเว็บ
+    renderForm();
+
+    // 4. จัดการเมื่อกดปุ่ม "ส่งใบสมัคร"
+    document.getElementById('dynamicForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // กันหน้าเว็บโหลดใหม่
+        alert("นี่คือระบบจำลอง: ฟอร์มทำงานได้สมบูรณ์แล้ว! ขั้นตอนต่อไปคือการส่งข้อมูลไปเก็บ");
+    });
+
+</script>
+</body>
+</html>

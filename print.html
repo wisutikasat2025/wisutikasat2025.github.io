@@ -11,7 +11,7 @@
 
     <style>
         body { 
-            background: #525659; /* สีเทาๆ เหมือนเปิดดู PDF */
+            background: #525659; 
             display: flex; 
             justify-content: center; 
             padding: 40px 20px; 
@@ -19,7 +19,6 @@
             margin: 0;
         }
         
-        /* จำลองกระดาษ A4 ขึ้นมาบนจอ */
         .a4-paper { 
             background: white; 
             width: 210mm; 
@@ -30,9 +29,8 @@
             color: #000;
         }
         
-        /* ตกแต่งด้านในใบสมัคร */
         .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px double #333; }
-        .print-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; }
+        .print-title { font-size: 26px; font-weight: 600; margin-bottom: 15px; }
         .print-appid-box { display: inline-block; border: 2px solid #000; padding: 10px 25px; font-size: 20px; font-weight: bold; margin-bottom: 10px; border-radius: 8px; }
         
         .print-table { width: 100%; border-collapse: collapse; font-size: 16px; margin-bottom: 30px; }
@@ -45,14 +43,11 @@
         
         #loadingMsg { color: white; font-size: 24px; text-align: center; }
 
-        /* ========================================= */
-        /* พอสั่ง Print จริงๆ ระบบจะยึด CSS ตรงนี้ไปใช้ */
-        /* ========================================= */
         @media print {
             body { background: white; padding: 0; }
             .a4-paper { width: 100%; min-height: auto; padding: 0; box-shadow: none; border: none; }
             @page { size: A4 portrait; margin: 15mm; }
-            tr { page-break-inside: avoid; } /* กันตารางขาดครึ่งหน้า */
+            tr { page-break-inside: avoid; } 
             .print-table th { -webkit-print-color-adjust: exact; background-color: #f0f0f0 !important; }
         }
     </style>
@@ -79,7 +74,6 @@
     </div>
 
 <script>
-    // 1. ตั้งค่า Firebase ให้ตรงกับหน้าหลัก
     const firebaseConfig = {
         apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
         authDomain: "register-wisutikasat.firebaseapp.com",
@@ -90,9 +84,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 2. ฟังก์ชันหลักสำหรับดึงข้อมูลมาทำหน้ากระดาษ
     async function loadAndPrint() {
-        // ดึงค่า ID จาก URL เช่น print.html?id=SK-ABC12
         const urlParams = new URLSearchParams(window.location.search);
         const appId = urlParams.get('id');
 
@@ -102,7 +94,6 @@
         }
 
         try {
-            // ดึงข้อมูลจากฐานข้อมูลพร้อมๆ กันทั้ง 3 อย่าง (ข้อมูลผู้สมัคร, ชื่อหัวเว็บ, โครงสร้างคำถาม)
             const [subDoc, themeDoc, formDoc] = await Promise.all([
                 db.collection("submissions").doc(appId).get(),
                 db.collection("settings").doc("theme").get(),
@@ -118,24 +109,27 @@
             const formTitle = themeDoc.exists && themeDoc.data().formTitle ? themeDoc.data().formTitle : "ใบสมัครเข้าร่วมกิจกรรม";
             const questions = formDoc.exists ? formDoc.data().questions : [];
 
-            // ยัดข้อมูลใส่กระดาษ
             document.getElementById('printFormTitle').innerHTML = formTitle;
             document.getElementById('printAppId').innerText = data.appId;
             document.getElementById('printTimestamp').innerText = data.timestamp;
 
             const tbody = document.getElementById('printTableBody');
             
-            // วนลูปเรียงคำถาม
             questions.forEach(q => {
                 if (q.type === 'section') {
                     tbody.innerHTML += `<tr><td colspan="2" style="background:#e0e0e0; padding:12px; font-weight:bold; font-size:18px;">${q.label}</td></tr>`;
                     return;
                 }
                 
+                // 🌟 หากเป็นกล่องอธิบาย ให้โชว์เต็มบรรทัด
+                if (q.type === 'info') {
+                    tbody.innerHTML += `<tr><td colspan="2" style="background:#f9f9f9; padding:12px; font-size:14px; font-style:italic;"><strong>${q.label}</strong><br>${q.description.replace(/\n/g, '<br>')}</td></tr>`;
+                    return;
+                }
+                
                 let val = data.answers[q.id] || "-";
                 let valHtml = val;
 
-                // ถ้าระบบพบว่าเป็นลิงก์รูปภาพ ให้แสดงเป็นรูปแทนข้อความ
                 if (val.includes('i.ibb.co') || val.includes('http')) {
                     valHtml = `<img src="${val}" class="print-img">`;
                 }
@@ -143,16 +137,13 @@
                 tbody.innerHTML += `<tr><td style="width: 35%; font-weight:bold;">${q.label}</td><td>${valHtml}</td></tr>`;
             });
 
-            // ซ่อนข้อความโหลด และโชว์กระดาษ
             document.getElementById('loadingMsg').style.display = 'none';
             document.getElementById('paper').style.display = 'block';
 
-            // 🌟 รอให้รูปภาพโหลดเสร็จ 100% แล้วค่อยเด้งหน้าต่างปริ้นท์
             const images = document.getElementsByTagName('img');
             let loadedCount = 0;
 
             const triggerPrint = () => {
-                // รออีกนิดเผื่อให้เบราว์เซอร์จัดบรรทัดเรียบร้อย แล้วสั่งปริ้นท์
                 setTimeout(() => { window.print(); }, 500);
             };
 
@@ -175,7 +166,6 @@
         }
     }
 
-    // เริ่มทำงานทันทีที่เปิดหน้าเว็บ
     loadAndPrint();
 
 </script>

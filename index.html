@@ -462,25 +462,36 @@
     // =======================================================
     // ของแอดมินอัปโหลดรูปตกแต่งเว็บ
     // =======================================================
-    async function uploadThemeImage(input, type) {
+async function uploadThemeImage(input, type) {
         if (input.files && input.files[0]) {
             const statusText = document.getElementById('themeUploadStatus');
-            statusText.style.display = 'block'; statusText.innerText = "⏳ กำลังอัปโหลดรูปลง Cloudinary...";
+            statusText.style.display = 'block'; 
+            statusText.innerText = "⏳ กำลังย่อขนาดและอัปโหลดรูปลง Cloudinary...";
             input.disabled = true;
+
             try {
-                const reader = new FileReader();
-                reader.readAsDataURL(input.files[0]);
-                reader.onload = async () => {
-                    const imageUrl = await uploadToCloudinary(reader.result);
-                    if (type === 'banner') themeSettings.bannerUrl = imageUrl;
-                    else if (type === 'bg') themeSettings.backgroundUrl = imageUrl;
-                    await db.collection("settings").doc("theme").set(themeSettings);
-                    applyTheme();
-                    statusText.innerText = "✅ อัปโหลดสำเร็จ!";
-                    setTimeout(() => statusText.style.display = 'none', 3000);
-                };
-            } catch (error) { alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); statusText.style.display = 'none'; } 
-            finally { input.disabled = false; }
+                const file = input.files[0];
+                
+                // 🌟 แก้ตรงนี้: ย่อรูปหน้าปกและพื้นหลังให้เหลือความกว้าง 1600px (ชัดพอสำหรับจอคอม แต่ไฟล์เล็กมาก)
+                const base64Str = await resizeImageToBase64(file, 1600); 
+
+                // อัปโหลด Base64 ที่ย่อแล้วขึ้น Cloudinary
+                const imageUrl = await uploadToCloudinary(base64Str);
+                
+                if (type === 'banner') themeSettings.bannerUrl = imageUrl;
+                else if (type === 'bg') themeSettings.backgroundUrl = imageUrl;
+                
+                await db.collection("settings").doc("theme").set(themeSettings);
+                applyTheme();
+                
+                statusText.innerText = "✅ อัปโหลดสำเร็จ!";
+                setTimeout(() => statusText.style.display = 'none', 3000);
+            } catch (error) { 
+                alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); 
+                statusText.style.display = 'none'; 
+            } finally { 
+                input.disabled = false; 
+            }
         }
     }
     

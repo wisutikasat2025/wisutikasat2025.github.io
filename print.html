@@ -8,91 +8,102 @@
     
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        /* 🌟 โซนดูบนหน้าจอปกติ */
         body { 
             background: #525659; 
             display: flex; 
             justify-content: center; 
+            align-items: flex-start;
             padding: 40px 20px; 
             font-family: 'Prompt', sans-serif; 
             margin: 0;
+            min-height: 100vh;
         }
         
+        /* 🌟 พื้นที่ A4 จำลอง (ต้องกำหนดกว้าง 800px เพื่อให้ html2pdf แคปภาพได้สัดส่วนที่ถูกต้องเสมอ) */
         .a4-paper { 
             background: white; 
-            width: 210mm; /* บังคับกว้างเท่า A4 */
-            min-height: 297mm; /* บังคับสูงเท่า A4 */
-            padding: 15mm; 
+            width: 800px; 
+            max-width: 800px;
+            padding: 40px; 
             box-sizing: border-box; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
             color: #000;
+            /* ซ่อนไว้ก่อน เดี๋ยวค่อยโชว์ตอนสร้าง PDF */
+            position: absolute;
+            left: -9999px;
+            top: 0;
         }
         
+        /* ตกแต่งด้านในใบสมัคร */
         .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px double #333; }
-        .print-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; }
+        .print-title { font-size: 24px; font-weight: 600; margin-bottom: 15px; }
         .print-appid-box { display: inline-block; border: 2px solid #000; padding: 10px 25px; font-size: 20px; font-weight: bold; margin-bottom: 10px; border-radius: 8px; }
         
-        .print-table { width: 100%; border-collapse: collapse; font-size: 16px; margin-bottom: 30px; table-layout: fixed; } /* บังคับตารางไม่ให้หด */
-        .print-table th, .print-table td { border: 1px solid #000; padding: 12px; text-align: left; vertical-align: middle; word-wrap: break-word; }
+        .print-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 30px; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 10px; text-align: left; vertical-align: middle; word-wrap: break-word; }
         .print-table th { background-color: #f0f0f0; }
         
-        .col-header { width: 35%; font-weight: bold; } /* ล็อกความกว้างคอลัมน์คำถาม */
-        .col-answer { width: 65%; } /* ล็อกความกว้างคอลัมน์คำตอบ */
+        /* ล็อกสัดส่วนคอลัมน์ให้ตายตัว ป้องกันตารางเบี้ยว */
+        .col-header { width: 35%; font-weight: bold; }
+        .col-answer { width: 65%; }
 
-        .print-img { max-height: 200px; max-width: 100%; border-radius: 8px; display: block; border: 1px solid #ccc; margin: 0 auto; }
+        .print-img { max-height: 180px; max-width: 100%; border-radius: 8px; display: block; border: 1px solid #ccc; margin: 0 auto; }
         
-        .print-signature { text-align: right; margin-top: 60px; font-size: 18px; margin-right: 20px; }
+        .print-signature { text-align: right; margin-top: 50px; font-size: 16px; margin-right: 20px; }
         
-        #loadingMsg { color: white; font-size: 24px; text-align: center; margin-top: 50px; }
-
-        /* ========================================= */
-        /* 🖨️ โซนสำหรับการสั่ง Print (มือถือ & คอม) */
-        /* ========================================= */
-        @media print {
-            body { 
-                background: white !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important; 
-            }
-            
-            /* 🌟 หัวใจสำคัญ: บังคับหน้ากระดาษ A4 ไม่ให้มือถือย่อสเกลเพี้ยน */
-            .a4-paper { 
-                width: 100% !important; 
-                max-width: 100% !important;
-                min-height: auto !important; 
-                padding: 0 !important; 
-                box-shadow: none !important; 
-                border: none !important; 
-                margin: 0 !important;
-            }
-            
-            @page { 
-                size: A4 portrait; 
-                margin: 10mm; /* ขอบกระดาษตอนปริ้นท์ */
-            }
-            
-            /* ป้องกันการขาดครึ่งหน้า */
-            tr { page-break-inside: avoid; } 
-            img { page-break-inside: avoid; max-width: 200px !important; }
-            .print-signature { page-break-inside: avoid; }
-            
-            /* รักษาตารางและขนาดอักษรตอนปริ้นท์ */
-            .print-table { width: 100% !important; font-size: 14px !important; }
-            .print-title { font-size: 22px !important; }
-            .print-appid-box { font-size: 18px !important; padding: 8px 20px !important; }
-            .print-table th { background-color: #f0f0f0 !important; }
+        /* 🌟 UI หน้าจอโหลด (จะแสดงอยู่กลางจอ ระหว่างที่ระบบแอบสร้าง PDF อยู่หลังบ้าน) */
+        .loading-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            z-index: 10;
+        }
+        
+        .loader {
+            border: 5px solid #f3f3f3; 
+            border-top: 5px solid #e67e22; 
+            border-radius: 50%; 
+            width: 50px; 
+            height: 50px; 
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .success-btn {
+            display: none;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Prompt';
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
         }
     </style>
 </head>
 <body>
 
-    <div id="loadingMsg">⏳ กำลังดึงข้อมูลและจัดเตรียมหน้ากระดาษ...</div>
+    <div class="loading-container" id="statusBox">
+        <div class="loader" id="spinner"></div>
+        <h3 style="color: #333; margin: 0 0 10px 0;" id="statusTitle">กำลังสร้างไฟล์ PDF...</h3>
+        <p style="color: #777; font-size: 14px; margin: 0;" id="statusDesc">กรุณารอสักครู่ ระบบกำลังดึงรูปภาพและจัดเตรียมเอกสาร</p>
+        
+        <button class="success-btn" id="closeBtn" onclick="window.close()">ปิดหน้านี้</button>
+    </div>
 
-    <div class="a4-paper" id="paper" style="display: none;">
+    <div class="a4-paper" id="paper">
         <div class="print-header">
             <div class="print-title" id="printFormTitle">ใบสมัครประกวดหนูน้อยสงกรานต์</div>
             <div class="print-appid-box">รหัสผู้สมัคร: <span id="printAppId" style="color: #e74c3c;"></span></div>
@@ -110,6 +121,7 @@
     </div>
 
 <script>
+    // 1. ตั้งค่า Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
         authDomain: "register-wisutikasat.firebaseapp.com",
@@ -120,24 +132,28 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadAndPrint() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const appId = urlParams.get('id');
+    // ตัวแปรเก็บข้อมูล
+    let globalAppId = "";
 
-        if (!appId) {
-            document.getElementById('loadingMsg').innerText = "❌ ไม่พบรหัสผู้สมัครในลิงก์";
+    async function loadAndGeneratePDF() {
+        const urlParams = new URLSearchParams(window.location.search);
+        globalAppId = urlParams.get('id');
+
+        if (!globalAppId) {
+            showError("ไม่พบรหัสผู้สมัคร", "กรุณาเข้าสู่หน้านี้ผ่านลิงก์จากระบบรับสมัครหลัก");
             return;
         }
 
         try {
+            // ดึงข้อมูล 3 ส่วน
             const [subDoc, themeDoc, formDoc] = await Promise.all([
-                db.collection("submissions").doc(appId).get(),
+                db.collection("submissions").doc(globalAppId).get(),
                 db.collection("settings").doc("theme").get(),
                 db.collection("settings").doc("form").get()
             ]);
 
             if (!subDoc.exists) {
-                document.getElementById('loadingMsg').innerText = "❌ ไม่พบข้อมูลการสมัครของรหัสนี้";
+                showError("ไม่พบข้อมูล", "ไม่พบข้อมูลการสมัครของรหัส " + globalAppId);
                 return;
             }
 
@@ -145,6 +161,7 @@
             const formTitle = themeDoc.exists && themeDoc.data().formTitle ? themeDoc.data().formTitle : "ใบสมัครเข้าร่วมกิจกรรม";
             const questions = formDoc.exists ? formDoc.data().questions : [];
 
+            // 1. หยอดข้อมูลลงกระดาษ A4
             document.getElementById('printFormTitle').innerHTML = formTitle;
             document.getElementById('printAppId').innerText = data.appId;
             document.getElementById('printTimestamp').innerText = data.timestamp;
@@ -158,51 +175,90 @@
                 }
                 
                 if (q.type === 'info') {
-                    tbody.innerHTML += `<tr><td colspan="2" style="background:#f9f9f9; padding:10px; font-size:13px; font-style:italic;"><strong>${q.label}</strong><br>${q.description.replace(/\n/g, '<br>')}</td></tr>`;
+                    tbody.innerHTML += `<tr><td colspan="2" style="background:#f9f9f9; padding:10px; font-size:14px; font-style:italic;"><strong>${q.label}</strong><br>${q.description.replace(/\n/g, '<br>')}</td></tr>`;
                     return;
                 }
                 
                 let val = data.answers[q.id] || "-";
                 let valHtml = val;
 
-                // ตรวจจับลิงก์รูปภาพ
+                // 🌟 ดักจับลิงก์รูปภาพ (สำคัญ: ต้องเติม crossorigin="anonymous" เพื่อให้ html2pdf แคปภาพข้ามโดเมนได้)
                 if (val.includes('i.ibb.co') || val.includes('res.cloudinary.com') || val.includes('http')) {
-                    valHtml = `<img src="${val}" class="print-img">`;
+                    valHtml = `<img crossorigin="anonymous" src="${val}" class="print-img">`;
                 }
 
-                // 🌟 ใช้ Class บังคับความกว้างคอลัมน์ไม่ให้เพี้ยน
                 tbody.innerHTML += `<tr><td class="col-header">${q.label}</td><td class="col-answer">${valHtml}</td></tr>`;
             });
 
-            document.getElementById('loadingMsg').style.display = 'none';
-            document.getElementById('paper').style.display = 'block';
-
-            const images = document.getElementsByTagName('img');
+            // 2. ดักรอให้รูปภาพทุกรูปโหลดเสร็จ 100% ก่อนแคปหน้าจอ (แก้ปัญหาหน้าขาว)
+            const paperElement = document.getElementById('paper');
+            const images = paperElement.getElementsByTagName('img');
             let loadedCount = 0;
 
-            const triggerPrint = () => {
-                setTimeout(() => { window.print(); }, 800);
-            };
-
             if (images.length === 0) {
-                triggerPrint();
+                createPDF(paperElement, data.appId);
             } else {
                 for (let img of images) {
                     if (img.complete) {
                         loadedCount++;
-                        if (loadedCount === images.length) triggerPrint();
+                        if (loadedCount === images.length) createPDF(paperElement, data.appId);
                     } else {
-                        img.onload = () => { loadedCount++; if (loadedCount === images.length) triggerPrint(); };
-                        img.onerror = () => { loadedCount++; if (loadedCount === images.length) triggerPrint(); };
+                        img.onload = () => { loadedCount++; if (loadedCount === images.length) createPDF(paperElement, data.appId); };
+                        img.onerror = () => { loadedCount++; if (loadedCount === images.length) createPDF(paperElement, data.appId); };
                     }
                 }
             }
 
         } catch (error) {
-            document.getElementById('loadingMsg').innerText = "❌ ระบบขัดข้อง: " + error.message;
+            showError("ระบบขัดข้อง", error.message);
         }
     }
 
+    // ฟังก์ชันสร้าง PDF (ใช้ html2pdf)
+    function createPDF(element, appId) {
+        document.getElementById('statusDesc').innerText = "กำลังแปลงข้อมูลเป็นไฟล์ PDF...";
+        
+        // เลื่อนหน้าจอขึ้นบนสุดก่อนแคป (แก้บักแคปติดขอบขาว)
+        window.scrollTo(0, 0);
+
+        const opt = {
+            margin:       [10, 10, 10, 10], // ขอบกระดาษ [บน, ซ้าย, ล่าง, ขวา]
+            filename:     `ใบสมัคร_${appId}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2,           // ความคมชัด (2 เท่า)
+                useCORS: true,      // อนุญาตให้โหลดรูปภาพจากเว็บอื่น (ImgBB, Cloudinary)
+                windowWidth: 800,   // 🌟 บังคับกว้าง 800px เสมอ (ไม่ว่ามือถือจะจอเล็กแค่ไหน)
+                scrollY: 0
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // สั่งสร้างและดาวน์โหลด
+        html2pdf().set(opt).from(element).save().then(() => {
+            showSuccess();
+        }).catch(err => {
+            showError("เกิดข้อผิดพลาดตอนสร้าง PDF", err.message);
+        });
+    }
+
+    // ตัวช่วยเปลี่ยน UI สถานะ
+    function showSuccess() {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('statusTitle').innerText = "✅ ดาวน์โหลดสำเร็จ!";
+        document.getElementById('statusTitle').style.color = "#2ecc71";
+        document.getElementById('statusDesc').innerText = `ไฟล์ "ใบสมัคร_${globalAppId}.pdf" ถูกบันทึกลงในเครื่องของคุณแล้ว`;
+        document.getElementById('closeBtn').style.display = 'block';
+    }
+
+    function showError(title, desc) {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('statusTitle').innerText = "❌ " + title;
+        document.getElementById('statusTitle').style.color = "#e74c3c";
+        document.getElementById('statusDesc').innerText = desc;
+    }
+
+    // เริ่มทำงานทันที
     loadAndPrint();
 
 </script>

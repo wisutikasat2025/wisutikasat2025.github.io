@@ -129,7 +129,6 @@
         </div>
 
         <div id="tab-settings" class="tab-content">
-            
             <div class="admin-settings-panel" style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <h3 style="margin: 0; color: var(--primary-color);">🛑 สถานะแบบฟอร์มรับสมัคร</h3>
@@ -229,7 +228,7 @@
         bannerUrl: "", 
         backgroundUrl: "",
         formTitle: "🌸 ใบสมัครประกวดหนูน้อยสงกรานต์ พ.ศ. ๒๕๖๙",
-        isFormOpen: true // 🌟 ตัวแปรเช็คสถานะการเปิด/ปิดฟอร์ม
+        isFormOpen: true
     };
     let questionsData = [];
     let submissions = [];
@@ -258,7 +257,6 @@
             
             applyTheme();
             
-            // 🌟 ตรวจสอบว่าฟอร์มเปิดหรือปิดอยู่
             if(themeSettings.isFormOpen || isAdminMode) {
                 renderForm();
                 document.getElementById('formContainerBlock').style.display = 'block';
@@ -288,12 +286,11 @@
             document.getElementById('adminTabsMenu').style.display = 'flex';
             document.getElementById('userBtnGroup').style.display = 'none';
             
-            // แอดมินต้องเห็นฟอร์มเสมอ แม้ว่าจะปิดรับสมัครอยู่
             document.getElementById('closedScreen').style.display = 'none';
             document.getElementById('formContainerBlock').style.display = 'block';
 
             switchTab('tab-form'); renderAdminUsersTable(); renderForm();
-            updateToggleBtnUI(); // อัปเดตปุ่มสวิตช์
+            updateToggleBtnUI(); 
         } else { alert("รหัสผ่านไม่ถูกต้อง!"); }
     }
     function logout() { location.reload(); }
@@ -333,7 +330,6 @@
         await db.collection("settings").doc("theme").set(themeSettings);
     }
 
-    // 🌟 ฟังก์ชันเปิด-ปิดฟอร์ม
     function updateToggleBtnUI() {
         const btn = document.getElementById('toggleFormStateBtn');
         if(themeSettings.isFormOpen) {
@@ -353,12 +349,11 @@
             alert(themeSettings.isFormOpen ? "เปิดรับสมัครเรียบร้อยแล้ว!" : "ปิดฟอร์มรับสมัครแล้ว! (ผู้ใช้ทั่วไปจะไม่เห็นฟอร์ม)");
         } catch (e) {
             alert("อัปเดตไม่สำเร็จ: " + e.message);
-            themeSettings.isFormOpen = !themeSettings.isFormOpen; // rollback
+            themeSettings.isFormOpen = !themeSettings.isFormOpen;
             updateToggleBtnUI();
         }
     }
 
-    // 🌟 อัปโหลดรูปลง ImgBB
     async function uploadImageToImgBB(file) {
         return new Promise(async (resolve, reject) => {
             try {
@@ -405,6 +400,7 @@
 
     function removeQuestionImage(index) { saveCurrentInputState(); questionsData[index].imageUrl = ""; renderForm(); }
 
+    // 🌟 อัปเกรด Form Builder ให้รองรับ Date และ Number พร้อมเงื่อนไข
     function renderForm() {
         const content = document.getElementById('form-content');
         content.innerHTML = '';
@@ -425,6 +421,25 @@
                     optionsBuilderHtml += `<button type="button" onclick="addOptionBox(${i})" style="background: #3498db; color: white; border: none; border-radius: 6px; padding: 8px 15px; cursor: pointer; font-size: 13px; margin-top: 5px; font-family: 'Prompt';">+ เพิ่มตัวเลือก</button></div>`;
                 }
 
+                // 🌟 เพิ่มช่องกรอกเงื่อนไขสำหรับประเภท 'ตัวเลข'
+                let validationBuilderHtml = '';
+                if (q.type === 'number') {
+                    validationBuilderHtml = `
+                        <div class="options-container" style="margin-top:10px; background: #fdfdfd;">
+                            <label style="font-size: 13px; color: var(--primary-color); font-weight: bold;">⚙️ ตั้งค่าเงื่อนไขตัวเลข (ไม่ระบุก็ได้):</label>
+                            <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
+                                <label style="font-size: 12px; color: #555;">ค่าน้อยสุด:</label>
+                                <input type="number" id="edit_min_${i}" value="${q.min || ''}" style="flex:1; padding:6px; font-size:13px;">
+                                <label style="font-size: 12px; color: #555;">ค่ามากสุด:</label>
+                                <input type="number" id="edit_max_${i}" value="${q.max || ''}" style="flex:1; padding:6px; font-size:13px;">
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <input type="text" id="edit_err_${i}" value="${q.customErrorMsg || ''}" placeholder="ข้อความแจ้งเตือน (ถ้ากรอกผิดเงื่อนไข)" style="width:100%; padding:6px; font-size:13px;">
+                            </div>
+                        </div>
+                    `;
+                }
+
                 let imgPreviewHtml = '';
                 if (q.imageUrl) {
                     imgPreviewHtml = `<div style="margin-top: 10px; padding: 10px; border: 1px dashed #ccc; border-radius: 8px; text-align: center; background: #fff;"><img src="${q.imageUrl}" style="max-height: 120px; border-radius: 6px; display: block; margin: 0 auto 10px auto;"><button type="button" onclick="removeQuestionImage(${i})" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: 'Prompt';">🗑️ ลบรูปทิ้ง</button></div>`;
@@ -438,6 +453,8 @@
                         <select id="edit_type_${i}" onchange="questionTypeChanged(${i})" style="flex:1;">
                             <option value="section" ${q.type==='section'?'selected':''}>📋 แบ่งหน้า / ส่วนคำชี้แจง</option>
                             <option value="text" ${q.type==='text'?'selected':''}>ข้อความสั้น</option>
+                            <option value="number" ${q.type==='number'?'selected':''}>ตัวเลข (Number)</option>
+                            <option value="date" ${q.type==='date'?'selected':''}>วันที่ (ปฏิทิน)</option>
                             <option value="dropdown" ${q.type==='dropdown'?'selected':''}>ตัวเลือกเลื่อนลง (Dropdown)</option>
                             <option value="checkbox" ${q.type==='checkbox'?'selected':''}>เลือกหลายข้อ (Checkbox)</option>
                             <option value="file" ${q.type==='file'?'selected':''}>อัปโหลดไฟล์รูปภาพ</option>
@@ -449,6 +466,7 @@
                         <button type="button" onclick="deleteQuestion(${i})" style="background:#e74c3c; color:#fff; border:none; padding:12px 15px; border-radius:6px; cursor:pointer; font-family: 'Prompt';">🗑️ ลบ</button>
                     </div>
                     ${optionsBuilderHtml}
+                    ${validationBuilderHtml}
                 `;
                 content.appendChild(div);
             });
@@ -473,10 +491,28 @@
                     div.innerHTML = `<label>${q.label} ${q.isRequired?'<span class="required-star">*</span>':''}</label><p class="question-desc">${q.description}</p>`;
                     if (q.imageUrl) div.innerHTML += `<img src="${q.imageUrl}" class="question-img">`;
 
-                    if(q.type === 'dropdown') div.innerHTML += `<select name="${q.id}" ${q.isRequired?'required':''}><option value="">-- เลือก --</option>${q.options.map(o=>`<option value="${o}">${o}</option>`).join('')}</select>`;
-                    else if (q.type === 'checkbox') div.innerHTML += `<div class="checkbox-group">${q.options.map(o => `<label><input type="checkbox" name="${q.id}" value="${o}" style="width:auto; margin-right:10px; transform:scale(1.2);"> ${o}</label>`).join('')}</div>`;
-                    else if(q.type === 'file') div.innerHTML += `<input type="file" name="${q.id}" accept="image/*" ${q.isRequired?'required':''}>`;
-                    else div.innerHTML += `<input type="text" name="${q.id}" ${q.isRequired?'required':''}>`;
+                    // 🌟 เพิ่มการ Render ประเภทต่างๆ แบบสมบูรณ์
+                    if(q.type === 'dropdown') {
+                        div.innerHTML += `<select name="${q.id}" ${q.isRequired?'required':''}><option value="">-- เลือก --</option>${q.options.map(o=>`<option value="${o}">${o}</option>`).join('')}</select>`;
+                    }
+                    else if (q.type === 'checkbox') {
+                        div.innerHTML += `<div class="checkbox-group">${q.options.map(o => `<label><input type="checkbox" name="${q.id}" value="${o}" style="width:auto; margin-right:10px; transform:scale(1.2);"> ${o}</label>`).join('')}</div>`;
+                    }
+                    else if (q.type === 'date') {
+                        div.innerHTML += `<input type="date" name="${q.id}" ${q.isRequired?'required':''}>`;
+                    }
+                    else if (q.type === 'number') {
+                        let minAttr = q.min ? `min="${q.min}"` : '';
+                        let maxAttr = q.max ? `max="${q.max}"` : '';
+                        let errAttr = q.customErrorMsg ? `oninvalid="this.setCustomValidity('${q.customErrorMsg}')" oninput="this.setCustomValidity('')"` : '';
+                        div.innerHTML += `<input type="number" name="${q.id}" ${minAttr} ${maxAttr} ${q.isRequired?'required':''} ${errAttr} placeholder="ระบุตัวเลข">`;
+                    }
+                    else if(q.type === 'file') {
+                        div.innerHTML += `<input type="file" name="${q.id}" accept="image/*" ${q.isRequired?'required':''}>`;
+                    }
+                    else {
+                        div.innerHTML += `<input type="text" name="${q.id}" ${q.isRequired?'required':''}>`;
+                    }
                 }
                 content.appendChild(div);
             });
@@ -489,10 +525,35 @@
         }
     }
 
+    // 🌟 ระบบตรวจเช็คการข้ามหน้า (Validation ล็อกปุ่มถัดไป)
     function changeFormPage(targetPage) {
         if(targetPage > currentFormPage) {
-            const inputs = document.getElementById('form-content').querySelectorAll('input, select');
-            for(let input of inputs) { if(!input.checkValidity()) { input.reportValidity(); return; } }
+            // ดึงคำถามเฉพาะในหน้าปัจจุบันมาตรวจ
+            let pgs = []; let temp = [];
+            questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
+            if(temp.length>0) pgs.push(temp);
+
+            const currentQuestions = pgs[currentFormPage];
+            
+            for (let q of currentQuestions) {
+                if (q.type === 'section') continue;
+                
+                // ตรวจ Checkbox บังคับตอบอย่างน้อย 1 ข้อ
+                if (q.type === 'checkbox' && q.isRequired) {
+                    const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
+                    if (checked.length === 0) {
+                        alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`);
+                        return; // หยุดการเปลี่ยนหน้า
+                    }
+                } else {
+                    // ตรวจเงื่อนไข HTML5 อัตโนมัติ (พวกตัวเลข วันที่ ค่าว่าง)
+                    const el = document.querySelector(`[name="${q.id}"]`);
+                    if (el && !el.checkValidity()) {
+                        el.reportValidity(); // โชว์ข้อความแจ้งเตือนแดงๆ ที่ช่องนั้น
+                        return; // หยุดการเปลี่ยนหน้า
+                    }
+                }
+            }
         }
         currentFormPage = targetPage; renderForm(); window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -504,7 +565,14 @@
     }
     function addOptionBox(qIndex) { saveCurrentInputState(); questionsData[qIndex].options.push(""); renderForm(); }
     function removeOptionBox(qIndex, optIndex) { saveCurrentInputState(); questionsData[qIndex].options.splice(optIndex, 1); renderForm(); }
-    function addNewQuestion() { saveCurrentInputState(); questionsData.push({ id: "q_" + Date.now(), label: "คำถามใหม่", type: "text", description: "", isRequired: false, options: [], imageUrl: "" }); renderForm(); }
+    function addNewQuestion() { 
+        saveCurrentInputState(); 
+        questionsData.push({ 
+            id: "q_" + Date.now(), label: "คำถามใหม่", type: "text", description: "", 
+            isRequired: false, options: [], imageUrl: "", min: "", max: "", customErrorMsg: "" 
+        }); 
+        renderForm(); 
+    }
     function deleteQuestion(index) { if(confirm("ลบทิ้งใช่หรือไม่?")) { questionsData.splice(index, 1); renderForm(); } }
 
     function saveCurrentInputState() {
@@ -514,6 +582,7 @@
                 q.description = document.getElementById(`edit_desc_${i}`).value;
                 q.type = document.getElementById(`edit_type_${i}`).value;
                 if(document.getElementById(`edit_req_${i}`)) q.isRequired = document.getElementById(`edit_req_${i}`).value === "true";
+                
                 if(q.type === 'dropdown' || q.type === 'checkbox') {
                     let newOptions = []; let optIndex = 0;
                     while(document.getElementById(`edit_opt_${i}_${optIndex}`) !== null) {
@@ -522,6 +591,16 @@
                         optIndex++;
                     }
                     q.options = newOptions;
+                }
+                
+                // 🌟 เซฟค่า Validation สำหรับตัวเลข
+                if(q.type === 'number') {
+                    let editMin = document.getElementById(`edit_min_${i}`);
+                    let editMax = document.getElementById(`edit_max_${i}`);
+                    let editErr = document.getElementById(`edit_err_${i}`);
+                    if(editMin) q.min = editMin.value;
+                    if(editMax) q.max = editMax.value;
+                    if(editErr) q.customErrorMsg = editErr.value;
                 }
             }
         });
@@ -565,9 +644,30 @@
         }
     }
 
+    // 🌟 ระบบส่งใบสมัคร (มีระบบเช็ค Validation ด่านสุดท้ายก่อนส่ง)
     async function submitForm() {
-        const inputs = document.getElementById('form-content').querySelectorAll('input, select, textarea');
-        for(let input of inputs) { if(!input.checkValidity()) { input.reportValidity(); return; } }
+        // เช็คความถูกต้องหน้าสุดท้าย
+        let pgs = []; let temp = [];
+        questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
+        if(temp.length>0) pgs.push(temp);
+
+        const currentQuestions = pgs[currentFormPage];
+        for (let q of currentQuestions) {
+            if (q.type === 'section') continue;
+            if (q.type === 'checkbox' && q.isRequired) {
+                const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
+                if (checked.length === 0) {
+                    alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`);
+                    return;
+                }
+            } else {
+                const el = document.querySelector(`[name="${q.id}"]`);
+                if (el && !el.checkValidity()) {
+                    el.reportValidity();
+                    return;
+                }
+            }
+        }
 
         const btn = event.target; btn.disabled = true; btn.innerHTML = "กำลังอัปโหลดข้อมูลและสร้างรหัส... ⏳";
         document.getElementById('loadingOverlay').style.display = 'flex';
@@ -606,7 +706,6 @@
             document.getElementById('successScreen').style.display = 'block';
             document.getElementById('successAppId').innerText = appId;
             
-            // เปิดไฟล์ print.html 
             document.getElementById('downloadPdfBtn').onclick = () => window.open('print.html?id=' + appId, '_blank');
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -642,40 +741,33 @@
         } catch(e) { resDiv.innerHTML = "เกิดข้อผิดพลาด: " + e.message; }
     }
 
-    // 🌟 ฟังก์ชันดาวน์โหลด Excel (CSV)
     function exportToCSV() {
         if (submissions.length === 0) {
             alert("ยังไม่มีข้อมูลผู้สมัครให้ Export ครับ");
             return;
         }
 
-        // 1. สร้างหัวคอลัมน์ (Headers)
         let csvContent = "รหัสผู้สมัคร,วันที่สมัคร,";
-        let questionKeys = []; // เก็บ ID คำถามเพื่อเรียงให้ตรงกัน
+        let questionKeys = []; 
         
         questionsData.forEach(q => {
             if (q.type !== 'section') {
-                // ใส่เครื่องหมาย "" ครอบหัวข้อเพื่อป้องกันปัญหาลูกน้ำ (,) ในชื่อคำถาม
                 csvContent += `"${q.label}",`;
                 questionKeys.push(q.id);
             }
         });
-        csvContent += "\n"; // จบบรรทัดแรก
+        csvContent += "\n";
 
-        // 2. ดึงข้อมูลแต่ละคนมาเรียงเป็นแถว
         submissions.forEach(sub => {
             csvContent += `"${sub.appId}","${sub.timestamp}",`;
             questionKeys.forEach(key => {
                 let ans = sub.answers[key] || "-";
-                // ป้องกันลูกน้ำ (,) หรือการขึ้นบรรทัดใหม่ในคำตอบ ทำให้ไฟล์พัง
-                ans = ans.replace(/"/g, '""'); // เปลี่ยน " เป็น ""
+                ans = ans.replace(/"/g, '""'); 
                 csvContent += `"${ans}",`;
             });
             csvContent += "\n";
         });
 
-        // 3. แปลงเป็นไฟล์แล้วสั่งดาวน์โหลด
-        // \uFEFF คือรหัสที่บังคับให้ Excel อ่านภาษาไทย (UTF-8) ได้แบบไม่เป็นภาษาต่างดาว
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -688,12 +780,10 @@
         document.body.removeChild(link);
     }
 
-    // 🌟 ฟังก์ชันลบข้อมูลทั้งหมด
     async function deleteAllSubmissions() {
         if(currentUserRole !== "Super Admin") { 
             alert("เฉพาะ Super Admin เท่านั้นที่ล้างข้อมูลทั้งหมดได้"); return; 
         }
-        
         if (submissions.length === 0) {
             alert("ตอนนี้ยังไม่มีข้อมูลผู้สมัครครับ"); return;
         }
@@ -705,16 +795,13 @@
             document.getElementById('loadingText').innerText = "กำลังล้างข้อมูลทั้งหมด กรุณารอสักครู่...";
             
             try {
-                // Firestore ต้องสั่งลบทีละอันผ่าน Batch หรือ Loop
-                // เราจะลบผ่าน Loop ทีละ Doc
                 const snapshot = await db.collection("submissions").get();
                 const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
-                
                 await Promise.all(deletePromises);
                 
                 document.getElementById('loadingOverlay').style.display = 'none';
                 alert("✅ ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว!");
-                loadSubmissionsAndRender('summary'); // โหลดหน้าสถิติใหม่
+                loadSubmissionsAndRender('summary'); 
             } catch (error) {
                 document.getElementById('loadingOverlay').style.display = 'none';
                 alert("❌ เกิดข้อผิดพลาดในการลบ: " + error.message);
@@ -778,7 +865,6 @@
             }
         });
         
-        // 🌟 เปลี่ยนปุ่มลบรายบุคคลเป็นปุ่มสีแดงธรรมดา เพื่อให้ปุ่มลบทั้งหมดเด่นกว่า
         html += `<button onclick="deleteSubmission(${i})" style="margin-top:20px; background:#e74c3c; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; width:100%; font-family:'Prompt'; font-size:14px;">🗑️ ลบข้อมูลรายการนี้</button>`;
         details.innerHTML = html;
         details.style.display = 'block';
@@ -795,7 +881,6 @@
         }
     }
 
-    // 🚀 เรียกใช้งานระบบ
     loadInitialData();
 
 </script>

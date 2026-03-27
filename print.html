@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <style>
+        /* 🌟 โซนดูบนหน้าจอปกติ */
         body { 
             background: #525659; 
             display: flex; 
@@ -21,34 +22,69 @@
         
         .a4-paper { 
             background: white; 
-            width: 210mm; 
-            min-height: 297mm; 
-            padding: 20mm; 
+            width: 210mm; /* บังคับกว้างเท่า A4 */
+            min-height: 297mm; /* บังคับสูงเท่า A4 */
+            padding: 15mm; 
             box-sizing: border-box; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
             color: #000;
         }
         
         .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px double #333; }
-        .print-title { font-size: 26px; font-weight: 600; margin-bottom: 15px; }
+        .print-title { font-size: 24px; font-weight: 600; margin-bottom: 15px; }
         .print-appid-box { display: inline-block; border: 2px solid #000; padding: 10px 25px; font-size: 20px; font-weight: bold; margin-bottom: 10px; border-radius: 8px; }
         
-        .print-table { width: 100%; border-collapse: collapse; font-size: 16px; margin-bottom: 30px; }
-        .print-table th, .print-table td { border: 1px solid #000; padding: 12px; text-align: left; vertical-align: middle; }
+        .print-table { width: 100%; border-collapse: collapse; font-size: 16px; margin-bottom: 30px; table-layout: fixed; } /* บังคับตารางไม่ให้หด */
+        .print-table th, .print-table td { border: 1px solid #000; padding: 12px; text-align: left; vertical-align: middle; word-wrap: break-word; }
         .print-table th { background-color: #f0f0f0; }
         
-        .print-img { max-height: 200px; max-width: 250px; border-radius: 8px; display: block; border: 1px solid #ccc; margin: 0 auto; }
+        .col-header { width: 35%; font-weight: bold; } /* ล็อกความกว้างคอลัมน์คำถาม */
+        .col-answer { width: 65%; } /* ล็อกความกว้างคอลัมน์คำตอบ */
+
+        .print-img { max-height: 200px; max-width: 100%; border-radius: 8px; display: block; border: 1px solid #ccc; margin: 0 auto; }
         
         .print-signature { text-align: right; margin-top: 60px; font-size: 18px; margin-right: 20px; }
         
-        #loadingMsg { color: white; font-size: 24px; text-align: center; }
+        #loadingMsg { color: white; font-size: 24px; text-align: center; margin-top: 50px; }
 
+        /* ========================================= */
+        /* 🖨️ โซนสำหรับการสั่ง Print (มือถือ & คอม) */
+        /* ========================================= */
         @media print {
-            body { background: white; padding: 0; }
-            .a4-paper { width: 100%; min-height: auto; padding: 0; box-shadow: none; border: none; }
-            @page { size: A4 portrait; margin: 15mm; }
+            body { 
+                background: white !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            
+            /* 🌟 หัวใจสำคัญ: บังคับหน้ากระดาษ A4 ไม่ให้มือถือย่อสเกลเพี้ยน */
+            .a4-paper { 
+                width: 100% !important; 
+                max-width: 100% !important;
+                min-height: auto !important; 
+                padding: 0 !important; 
+                box-shadow: none !important; 
+                border: none !important; 
+                margin: 0 !important;
+            }
+            
+            @page { 
+                size: A4 portrait; 
+                margin: 10mm; /* ขอบกระดาษตอนปริ้นท์ */
+            }
+            
+            /* ป้องกันการขาดครึ่งหน้า */
             tr { page-break-inside: avoid; } 
-            .print-table th { -webkit-print-color-adjust: exact; background-color: #f0f0f0 !important; }
+            img { page-break-inside: avoid; max-width: 200px !important; }
+            .print-signature { page-break-inside: avoid; }
+            
+            /* รักษาตารางและขนาดอักษรตอนปริ้นท์ */
+            .print-table { width: 100% !important; font-size: 14px !important; }
+            .print-title { font-size: 22px !important; }
+            .print-appid-box { font-size: 18px !important; padding: 8px 20px !important; }
+            .print-table th { background-color: #f0f0f0 !important; }
         }
     </style>
 </head>
@@ -60,7 +96,7 @@
         <div class="print-header">
             <div class="print-title" id="printFormTitle">ใบสมัครประกวดหนูน้อยสงกรานต์</div>
             <div class="print-appid-box">รหัสผู้สมัคร: <span id="printAppId" style="color: #e74c3c;"></span></div>
-            <div style="font-size: 16px; color: #555;">วันที่สมัคร: <span id="printTimestamp"></span></div>
+            <div style="font-size: 14px; color: #555;">วันที่สมัคร: <span id="printTimestamp"></span></div>
         </div>
         
         <table class="print-table">
@@ -117,24 +153,25 @@
             
             questions.forEach(q => {
                 if (q.type === 'section') {
-                    tbody.innerHTML += `<tr><td colspan="2" style="background:#e0e0e0; padding:12px; font-weight:bold; font-size:18px;">${q.label}</td></tr>`;
+                    tbody.innerHTML += `<tr><td colspan="2" style="background:#e0e0e0; padding:10px; font-weight:bold; font-size:16px;">${q.label}</td></tr>`;
                     return;
                 }
                 
-                // 🌟 หากเป็นกล่องอธิบาย ให้โชว์เต็มบรรทัด
                 if (q.type === 'info') {
-                    tbody.innerHTML += `<tr><td colspan="2" style="background:#f9f9f9; padding:12px; font-size:14px; font-style:italic;"><strong>${q.label}</strong><br>${q.description.replace(/\n/g, '<br>')}</td></tr>`;
+                    tbody.innerHTML += `<tr><td colspan="2" style="background:#f9f9f9; padding:10px; font-size:13px; font-style:italic;"><strong>${q.label}</strong><br>${q.description.replace(/\n/g, '<br>')}</td></tr>`;
                     return;
                 }
                 
                 let val = data.answers[q.id] || "-";
                 let valHtml = val;
 
-                if (val.includes('i.ibb.co') || val.includes('http')) {
+                // ตรวจจับลิงก์รูปภาพ
+                if (val.includes('i.ibb.co') || val.includes('res.cloudinary.com') || val.includes('http')) {
                     valHtml = `<img src="${val}" class="print-img">`;
                 }
 
-                tbody.innerHTML += `<tr><td style="width: 35%; font-weight:bold;">${q.label}</td><td>${valHtml}</td></tr>`;
+                // 🌟 ใช้ Class บังคับความกว้างคอลัมน์ไม่ให้เพี้ยน
+                tbody.innerHTML += `<tr><td class="col-header">${q.label}</td><td class="col-answer">${valHtml}</td></tr>`;
             });
 
             document.getElementById('loadingMsg').style.display = 'none';
@@ -144,7 +181,7 @@
             let loadedCount = 0;
 
             const triggerPrint = () => {
-                setTimeout(() => { window.print(); }, 500);
+                setTimeout(() => { window.print(); }, 800);
             };
 
             if (images.length === 0) {

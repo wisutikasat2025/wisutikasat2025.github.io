@@ -244,6 +244,7 @@
     let submissions = [];
     let adminUsers = [ { username: "ADMIN", password: "1234", role: "Super Admin" } ];
     
+    // 🌟 ระบบเก็บข้อมูลฉบับร่างชั่วคราว
     let formDataDraft = {};
 
     const formContent = document.getElementById('form-content');
@@ -398,33 +399,7 @@
         });
     }
 
-    // 🌟 เมื่อเด็กๆ เลือกรูป (ทำแค่ย่อแล้วโชว์ ยังไม่อัปโหลด)
-    async function handleFileSelect(input, qId) {
-        if (input.files && input.files[0]) {
-            document.getElementById('loadingOverlay').style.display = 'flex';
-            document.getElementById('loadingText').innerText = "กำลังประมวลผลรูปภาพ...";
-            
-            const file = input.files[0];
-            const base64Str = await resizeImageToBase64(file, 600); // ย่อรูปเป็น Base64
-            
-            formDataDraft[qId] = base64Str; 
-            sessionStorage.setItem('userFormDraft', JSON.stringify(formDataDraft));
-            
-            let previewArea = document.getElementById('preview_area_' + qId);
-            if(previewArea) {
-                previewArea.innerHTML = `
-                    <div class="preview-img-container">
-                        <img src="${base64Str}">
-                        <div class="preview-badge">✓</div>
-                    </div>
-                `;
-            }
-            
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-    }
-
-    // 🌟 ระบบส่งรูปลง Cloudinary (จะรันเฉพาะตอนแอดมินอัปรูป หรือเด็กกดส่งฟอร์มด่านสุดท้าย)
+    // 🌟 ระบบอัปโหลดขึ้น Cloudinary
     async function uploadToCloudinary(base64Data) {
         return new Promise(async (resolve, reject) => {
             if (CLOUDINARY_URL.includes("ใส่ชื่อ") || CLOUDINARY_UPLOAD_PRESET.includes("ใส่ชื่อ")) {
@@ -439,21 +414,60 @@
                 let response = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
                 let result = await response.json();
                 
-                // Cloudinary จะคืนค่า URL ที่ปลอดภัยมาให้
                 if (result.secure_url) resolve(result.secure_url); 
                 else reject(result.error.message);
             } catch (error) { reject("ระบบเครือข่ายขัดข้อง"); }
         });
     }
 
-    // ระบบอัปโหลดรูปตกแต่งเว็บของแอดมิน
+    // =======================================================
+    // 🌟 [อัปเกรดใหม่] เมื่อเด็กเลือกรูป ปุ๊บ โค้ดจะอัปโหลดขึ้น Cloudinary ทันที!!
+    // =======================================================
+    async function handleFileSelect(input, qId) {
+        if (input.files && input.files[0]) {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "กำลังอัปโหลดรูปภาพขึ้นระบบ... ⏳";
+            
+            try {
+                const file = input.files[0];
+                // ย่อรูปเป็น Base64 ก่อน
+                const base64Str = await resizeImageToBase64(file, 600); 
+                
+                // อัปโหลดขึ้น Cloudinary ทันที!
+                const imageUrl = await uploadToCloudinary(base64Str);
+                
+                // เก็บเฉพาะ URL ที่อัปโหลดสำเร็จแล้วลง Draft
+                formDataDraft[qId] = imageUrl; 
+                sessionStorage.setItem('userFormDraft', JSON.stringify(formDataDraft));
+                
+                // โชว์รูปพรีวิวให้ดูเพื่อความมั่นใจ
+                let previewArea = document.getElementById('preview_area_' + qId);
+                if(previewArea) {
+                    previewArea.innerHTML = `
+                        <div class="preview-img-container">
+                            <img src="${imageUrl}">
+                            <div class="preview-badge">✓</div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                alert("อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง: " + err);
+                input.value = ""; // เคลียร์ไฟล์ถ้าอัปไม่ติด ให้เลือกใหม่
+            } finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+    }
+
+    // =======================================================
+    // ของแอดมินอัปโหลดรูปตกแต่งเว็บ
+    // =======================================================
     async function uploadThemeImage(input, type) {
         if (input.files && input.files[0]) {
             const statusText = document.getElementById('themeUploadStatus');
             statusText.style.display = 'block'; statusText.innerText = "⏳ กำลังอัปโหลดรูปลง Cloudinary...";
             input.disabled = true;
             try {
-                // แปลงไฟล์เป็น Base64 แบบชั่วคราวเพื่อส่งให้ฟังก์ชัน
                 const reader = new FileReader();
                 reader.readAsDataURL(input.files[0]);
                 reader.onload = async () => {
@@ -614,11 +628,12 @@
                         div.innerHTML += `<input type="number" name="${q.id}" value="${savedValue}" ${minAttr} ${maxAttr} ${q.isRequired?'required':''} ${errAttr} placeholder="ระบุตัวเลข">`;
                     }
                     else if(q.type === 'file') {
-                        let reqAttr = (q.isRequired && (!savedValue || !savedValue.startsWith('data:image'))) ? 'required' : '';
+                        // 🌟 ถ้ารูปเคยถูกอัปโหลดขึ้น Cloudinary ไปแล้ว (เป็นลิงก์ http) ก็ไม่ต้องบังคับ required
+                        let reqAttr = (q.isRequired && (!savedValue || !savedValue.includes('http'))) ? 'required' : '';
                         div.innerHTML += `<input type="file" name="${q.id}" accept="image/*" ${reqAttr} onchange="handleFileSelect(this, '${q.id}')">`;
                         
                         let previewContent = "";
-                        if (savedValue && savedValue.startsWith('data:image')) {
+                        if (savedValue && savedValue.includes('http')) {
                             previewContent = `
                                 <div class="preview-img-container">
                                     <img src="${savedValue}">
@@ -643,6 +658,7 @@
         }
     }
 
+    // 🌟 บันทึกเฉพาะข้อมูล Text ตัวหนังสือ เพราะรูปอัปโหลดไปเรียบร้อยแล้วตั้งแต่ตอนกดเลือกรูป
     function saveTextDraftCurrentPage() {
         let pgs = []; let temp = [];
         questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
@@ -651,6 +667,7 @@
         const currentQuestions = pgs[currentFormPage];
         
         for (let q of currentQuestions) {
+            // ข้ามรูปภาพไปเลย เพราะเรา Save ลง Draft ไปเรียบร้อยแล้วตอนฟังก์ชัน handleFileSelect() ทำงาน
             if (q.type === 'section' || q.type === 'info' || q.type === 'file') continue; 
             
             if (q.type === 'checkbox') {
@@ -683,7 +700,7 @@
                     }
                 } else {
                     const el = document.querySelector(`[name="${q.id}"]`);
-                    // ถ้าช่องอัปโหลดมีร่างไว้แล้ว ก็ให้ข้าม validation ได้
+                    // ถ้าช่องรูปภาพว่างเปล่า แต่ในแบบร่างเรามี URL ที่อัปโหลดไว้แล้ว ก็ปล่อยให้ผ่านไปได้เลย!
                     if(q.type === 'file' && q.isRequired && (!el || !el.files[0]) && formDataDraft[q.id]) {
                         continue;
                     }
@@ -783,7 +800,7 @@
         }
     }
 
-    // 🌟 ระบบส่งข้อมูลก้อนสุดท้ายขึ้น Cloudinary 
+    // 🌟 ระบบส่งข้อมูลก้อนสุดท้าย (พริบตาเดียวเสร็จ เพราะไม่ต้องส่งรูปแล้ว)
     async function submitForm() {
         let pgs = []; let temp = [];
         questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
@@ -792,48 +809,53 @@
         const currentQuestions = pgs[currentFormPage];
         for (let q of currentQuestions) {
             if (q.type === 'section' || q.type === 'info') continue;
+            
             if (q.type === 'checkbox' && q.isRequired) {
                 const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
-                if (checked.length === 0) { alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`); return; }
+                if (checked.length === 0) {
+                    alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`);
+                    return;
+                }
             } else {
                 const el = document.querySelector(`[name="${q.id}"]`);
                 if(q.type === 'file' && q.isRequired && (!el || !el.files[0]) && formDataDraft[q.id]) {
                     continue; 
                 }
-                if (el && !el.checkValidity()) { el.reportValidity(); return; }
+                if (el && !el.checkValidity()) {
+                    el.reportValidity();
+                    return;
+                }
             }
         }
+
+        // เซฟข้อความหน้าสุดท้าย
         saveTextDraftCurrentPage();
 
-        const btn = event.target; btn.disabled = true; btn.innerHTML = "กำลังจัดส่งข้อมูล... ⏳";
+        const btn = event.target; btn.disabled = true; btn.innerHTML = "กำลังส่งใบสมัคร... ⏳";
         document.getElementById('loadingOverlay').style.display = 'flex';
-        document.getElementById('loadingText').innerText = "กำลังอัปโหลดข้อมูลเข้าเซิร์ฟเวอร์ กรุณารอสักครู่...";
+        document.getElementById('loadingText').innerText = "กำลังบันทึกข้อมูล กรุณารอสักครู่...";
 
         try {
             let finalAnswers = {};
             for(let q of questionsData) {
                 if(q.type === 'section' || q.type === 'info') continue;
                 
-                let savedData = formDataDraft[q.id];
-                // 🌟 ตรวจสอบว่าถ้าเป็น Base64 ให้ส่งให้ Cloudinary
-                if(q.type === 'file' && savedData && savedData.startsWith('data:image')) {
-                    // ส่ง Base64 เข้า Cloudinary
-                    finalAnswers[q.id] = await uploadToCloudinary(savedData);
-                } else {
-                    finalAnswers[q.id] = savedData || "-"; 
-                }
+                // ดึงข้อมูลทั้งหมด รวมถึง URL รูปภาพที่เคยอัปโหลดไว้ มาส่งได้เลยทันที
+                finalAnswers[q.id] = formDataDraft[q.id] || "-"; 
             }
             
             const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
             const appId = "SK-" + randomStr;
             const timestamp = new Date().toLocaleString('th-TH');
 
+            // ใช้เวลาส่งขึ้น Firebase ไม่เกิน 1 วินาที เพราะเป็นตัวหนังสือล้วนๆ
             await db.collection("submissions").doc(appId).set({ 
                 appId: appId,
                 timestamp: timestamp, 
                 answers: finalAnswers 
             });
             
+            // ส่งเสร็จก็ล้าง Draft ทิ้ง
             sessionStorage.removeItem('userFormDraft');
             formDataDraft = {};
 
@@ -994,9 +1016,7 @@
             if(q.type==='section' || q.type === 'info') return;
             
             let val = s.answers[q.id] || "-";
-            // 🌟 รองรับการโชว์รูปจาก Cloudinary (res.cloudinary.com) ด้วย
             if(val.includes('i.ibb.co') || val.includes('res.cloudinary.com') || val.includes('http')) {
-                // 🌟 ทริคย่อรูประดับเทพ: เติม /w_300/ ในลิงก์ Cloudinary เพื่อให้หน้าแอดมินโหลดพรีวิวรูปเร็วขึ้น
                 let previewUrl = val;
                 if(val.includes('res.cloudinary.com/')) {
                     previewUrl = val.replace('/upload/', '/upload/w_300/');

@@ -179,7 +179,7 @@
             <div id="successScreen" class="success-screen" style="display:none;">
                 <div class="success-icon">✔️</div>
                 <h2 style="color: #2c3e50; margin-bottom: 5px;">ส่งใบสมัครเรียบร้อยแล้ว!</h2>
-                <p style="font-size: 16px; color: #7f8c8d;">ขอบคุณที่เข้าร่วมการประกวดครับ</p>
+                <p style="font-size: 16px; color: #7f8c8d;">ขอบคุณที่เข้าร่วมกิจกรรมครับ</p>
                 
                 <div style="background: #f8f9fa; border: 2px dashed var(--primary-color); border-radius: 12px; padding: 20px; margin: 30px auto; max-width: 400px;">
                     <p style="margin: 0; font-size: 14px; color: #555;">รหัสประจำตัวผู้สมัครของคุณคือ</p>
@@ -217,7 +217,7 @@
     let themeSettings = { 
         bannerUrl: "", 
         backgroundUrl: "",
-        formTitle: "🌸 ใบสมัครประกวดหนูน้อยสงกรานต์ พ.ศ. ๒๕๖๙"
+        formTitle: "🌸 ใบสมัครประกวดหนูน้อยสงกรานต์ พ.ศ. ๒๕๖๙" // ค่าเริ่มต้นใหม่
     };
     let questionsData = [];
     let submissions = [];
@@ -225,6 +225,7 @@
 
     const formContent = document.getElementById('form-content');
 
+    // 🌟 โหลดข้อมูลเริ่มต้น
     async function loadInitialData() {
         try {
             const adminsDoc = await db.collection("settings").doc("admins").get();
@@ -258,9 +259,11 @@
         }
     }
 
+    // 🌟 ระบบ Modal
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     
+    // 🌟 ระบบ Login
     function processLogin() {
         const u = document.getElementById('loginUser').value;
         const p = document.getElementById('loginPass').value;
@@ -295,6 +298,7 @@
         } catch(e) { alert("โหลดสถิติไม่ได้: " + e.message); }
     }
 
+    // 🌟 จัดการ Theme
     function applyTheme() {
         if(themeSettings.bannerUrl) { document.getElementById('bannerImage').src = themeSettings.bannerUrl; document.getElementById('bannerImage').style.display = 'block'; }
         if(themeSettings.backgroundUrl) document.body.style.backgroundImage = `url('${themeSettings.backgroundUrl}')`;
@@ -309,6 +313,7 @@
         await db.collection("settings").doc("theme").set(themeSettings);
     }
 
+    // 🌟 ระบบอัปโหลดรูปภาพฟรี ImgBB
     async function uploadImageToImgBB(file) {
         return new Promise(async (resolve, reject) => {
             try {
@@ -329,16 +334,20 @@
             const statusText = document.getElementById('themeUploadStatus');
             statusText.style.display = 'block'; statusText.innerText = "⏳ กำลังอัปโหลดรูปลงเซิร์ฟเวอร์...";
             input.disabled = true;
+
             try {
                 const imageUrl = await uploadImageToImgBB(input.files[0]);
                 if (type === 'banner') themeSettings.bannerUrl = imageUrl;
                 else if (type === 'bg') themeSettings.backgroundUrl = imageUrl;
+                
                 await db.collection("settings").doc("theme").set(themeSettings);
                 applyTheme();
                 statusText.innerText = "✅ อัปโหลดสำเร็จ!";
                 setTimeout(() => statusText.style.display = 'none', 3000);
-            } catch (error) { alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); statusText.style.display = 'none'; } 
-            finally { input.disabled = false; }
+            } catch (error) {
+                alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error);
+                statusText.style.display = 'none';
+            } finally { input.disabled = false; }
         }
     }
     
@@ -347,9 +356,11 @@
             saveCurrentInputState(); 
             const btn = document.getElementById('saveFormBtn');
             btn.innerHTML = "กำลังอัปโหลดรูปภาพ... ⏳"; btn.disabled = true;
+
             try {
                 const imageUrl = await uploadImageToImgBB(input.files[0]);
-                questionsData[index].imageUrl = imageUrl; renderForm(); 
+                questionsData[index].imageUrl = imageUrl;
+                renderForm(); 
             } catch (error) { alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); } 
             finally { btn.innerHTML = "💾 บันทึกโครงสร้างฟอร์ม"; btn.disabled = false; }
         }
@@ -357,6 +368,7 @@
 
     function removeQuestionImage(index) { saveCurrentInputState(); questionsData[index].imageUrl = ""; renderForm(); }
 
+    // 🌟 ระบบ Form Builder
     function renderForm() {
         const content = document.getElementById('form-content');
         content.innerHTML = '';
@@ -517,7 +529,7 @@
         }
     }
 
-    // 🌟 ระบบส่งใบสมัคร & ออกรหัส
+    // 🌟 ระบบส่งใบสมัคร
     async function submitForm() {
         const inputs = document.getElementById('form-content').querySelectorAll('input, select, textarea');
         for(let input of inputs) { if(!input.checkValidity()) { input.reportValidity(); return; } }
@@ -544,7 +556,7 @@
                 }
             }
             
-            // สร้างรหัสผู้สมัคร (SK- สุ่ม 5 ตัว)
+            // สร้างรหัส
             const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
             const appId = "SK-" + randomStr;
             const timestamp = new Date().toLocaleString('th-TH');
@@ -565,13 +577,14 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
         } catch (error) {
+            console.error(error);
             alert("❌ เกิดข้อผิดพลาดตอนส่งข้อมูล: " + error);
             btn.disabled = false; btn.innerHTML = "ส่งใบสมัคร 💾";
             document.getElementById('loadingOverlay').style.display = 'none';
         }
     }
 
-    // 🌟 ระบบค้นหาใบสมัคร (User)
+    // 🌟 ค้นหาใบสมัคร
     async function searchApp() {
         let inputId = document.getElementById('searchAppIdInput').value.trim().toUpperCase();
         const resDiv = document.getElementById('searchResult');
@@ -597,17 +610,22 @@
     }
 
     // =======================================================================
-    // 🌟 ระบบสร้างไฟล์ PDF อัตโนมัติ (อัปเกรดเพื่อรองรับมือถือ 100%)
+    // 🌟 ระบบสร้างไฟล์ PDF อัตโนมัติ (แก้ไขปัญหากระดาษขาวบนมือถือ 100%)
     // =======================================================================
     async function generatePDF(dataObj) {
-        document.getElementById('loadingOverlay').style.display = 'flex';
-        document.getElementById('loadingText').innerText = "กำลังจัดเตรียมหน้ากระดาษ (โหลดรูปภาพ)...";
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.style.display = 'flex';
+        overlay.style.background = '#fff'; // ทึบ 100% เพื่อบังกระดาษชั่วคราว
+        overlay.style.zIndex = '9999';
+        document.getElementById('loadingText').innerText = "กำลังดึงข้อมูลและรูปภาพ กรุณารอสักครู่...";
 
-        // 1. สร้างพื้นที่จำลองที่ผูกกับหน้าเว็บจริงๆ (แก้ไขมือถือเรนเดอร์พัง)
+        // เลื่อนหน้าจอขึ้นบนสุด ป้องกันบักแคปติดขอบขาว
+        window.scrollTo(0, 0); 
+
+        // 1. สร้างพื้นที่จำลองแบบวางบนหน้าจอจริงๆ
         const pdfDiv = document.createElement('div');
         pdfDiv.id = "temp-pdf-container";
-        // 🚨 ล็อกความกว้างไว้ที่ 800px เพื่อหลอกมือถือว่ากำลังเปิดในคอม
-        pdfDiv.style.cssText = "position: absolute; left: -9999px; top: 0; width: 800px; padding: 40px; font-family: 'Prompt', sans-serif; background: #fff; color: #000; box-sizing: border-box;";
+        pdfDiv.style.cssText = "position: absolute; left: 0; top: 0; width: 800px; padding: 40px; font-family: 'Prompt', sans-serif; background: #fff; color: #000; box-sizing: border-box; z-index: 1;";
 
         let html = `
             <div style="text-align:center; margin-bottom: 25px;">
@@ -628,7 +646,7 @@
             }
             let val = dataObj.answers[q.id] || "-";
             if (val.includes('i.ibb.co') || val.includes('http')) {
-                // 🚨 ใส่ crossorigin="anonymous" เพื่อกันมือถือบล็อก Canvas
+                // ใส่ crossorigin เพื่อกันมือถือบล็อกภาพ
                 html += `<tr><td style="padding:12px; border:1px solid #ddd; font-weight:600; width: 35%;">${q.label}</td><td style="padding:12px; border:1px solid #ddd; text-align:center;"><img crossorigin="anonymous" src="${val}" style="max-height:200px; border-radius:8px; border:1px solid #eee;"></td></tr>`;
             } else {
                 html += `<tr><td style="padding:12px; border:1px solid #ddd; font-weight:600; width: 35%;">${q.label}</td><td style="padding:12px; border:1px solid #ddd;">${val}</td></tr>`;
@@ -638,33 +656,35 @@
         html += `</table><div style="margin-top:50px; text-align:right; font-size:16px;"><p>ลงชื่อ.......................................................ผู้สมัคร</p></div>`;
         pdfDiv.innerHTML = html;
         
-        // แปะลง HTML เพื่อให้มือถืออ่าน CSS ออก
         document.body.appendChild(pdfDiv);
 
-        // 2. ระบบดักรอรูปภาพ (ถ้ามีรูป ต้องรอให้โหลดเสร็จก่อนค่อยแคปหน้าจอ)
+        // 2. ระบบดักรอรูปภาพ
         const images = pdfDiv.getElementsByTagName('img');
         let loadedCount = 0;
 
         const executePdf = () => {
-            document.getElementById('loadingText').innerText = "กำลังแปลงเป็นไฟล์ PDF...";
+            document.getElementById('loadingText').innerText = "กำลังจัดหน้าเอกสาร PDF...";
             const opt = {
                 margin:       10,
                 filename:     `ใบสมัคร_${dataObj.appId}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
-                    useCORS: true,       // อนุญาตให้ดึงรูปข้ามเว็บ
-                    windowWidth: 800     // 🚨 บังคับขนาด Canvas ให้เท่ากับ Desktop
+                    useCORS: true,       
+                    windowWidth: 800,
+                    scrollY: 0  // สำคัญมากสำหรับมือถือ
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             html2pdf().set(opt).from(pdfDiv).save().then(() => {
-                document.body.removeChild(pdfDiv); // เสร็จแล้วลบขยะทิ้ง
-                document.getElementById('loadingOverlay').style.display = 'none';
+                document.body.removeChild(pdfDiv); 
+                overlay.style.display = 'none';
+                overlay.style.background = 'rgba(255,255,255,0.9)'; // คืนค่าสีเดิม
             }).catch(err => {
                 document.body.removeChild(pdfDiv);
-                document.getElementById('loadingOverlay').style.display = 'none';
+                overlay.style.display = 'none';
+                overlay.style.background = 'rgba(255,255,255,0.9)';
                 alert("เกิดข้อผิดพลาดในการสร้าง PDF: " + err.message);
             });
         };
@@ -682,7 +702,7 @@
                         if (loadedCount === images.length) executePdf();
                     };
                     img.onerror = () => {
-                        loadedCount++; // ถ้ารูปโหลดไม่ขึ้น ก็ข้ามไปเลย จะได้ไม่ค้าง
+                        loadedCount++; 
                         if (loadedCount === images.length) executePdf();
                     };
                 }
@@ -745,7 +765,7 @@
                 html += `<div style="margin-bottom:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><strong>${q.label}:</strong> <span style="color:#2980b9; font-weight:500;">${val}</span></div>`;
             }
         });
-        html += `<button onclick="deleteSubmission(${i})" style="margin-top:20px; background:#e74c3c; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; width:100%; font-family:'Prompt'; font-size:16px; transition:0.2s;">🗑️ ลบข้อมูลอย่างถาวร</button>`;
+        html += `<button onclick="deleteSubmission(${i})" style="margin-top:20px; background:#e74c3c; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; width:100%; font-family:'Prompt'; font-size:16px; transition:0.2s;">🗑️ ลบข้อมูลการสมัครนี้อย่างถาวร</button>`;
         details.innerHTML = html;
         details.style.display = 'block';
     }
@@ -761,6 +781,7 @@
         }
     }
 
+    // เรียกโหลดระบบทันที
     loadInitialData();
 </script>
 </body>

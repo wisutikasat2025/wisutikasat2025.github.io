@@ -68,7 +68,7 @@
         .closed-icon { font-size: 70px; color: #e74c3c; margin-bottom: 20px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes scaleIn { from{transform:scale(0);} to{transform:scale(1);} }
 
-        /* ตกแต่งรูปพรีวิวให้ดูดี */
+        .file-status-preview { display: block; margin-top: 5px; font-size: 12px; color: #2ecc71; font-weight: bold; }
         .preview-img-container { margin-top: 10px; display: inline-block; position: relative; }
         .preview-img-container img { max-height: 120px; border-radius: 8px; border: 2px solid var(--primary-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .preview-badge { position: absolute; top: -10px; right: -10px; background: #2ecc71; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
@@ -213,8 +213,13 @@
 </div>
 
 <script>
-    const IMGBB_API_KEY = "19edc550c3d377bbba9d405c84788563";
+    // ========================================================
+    // 🔴 1. ตั้งค่า API ของ Cloudinary แทน ImgBB 🔴
+    // ========================================================
+    const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dmjvkiok8/image/upload";
+    const CLOUDINARY_UPLOAD_PRESET = "WISUTIKASAT"; 
 
+    // 2. Config Firebase Database 
     const firebaseConfig = {
         apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
         authDomain: "register-wisutikasat.firebaseapp.com",
@@ -238,15 +243,13 @@
     let questionsData = [];
     let submissions = [];
     let adminUsers = [ { username: "ADMIN", password: "1234", role: "Super Admin" } ];
-
-    // 🌟 ระบบจำข้อมูลฉบับร่าง
+    
     let formDataDraft = {};
 
     const formContent = document.getElementById('form-content');
 
     async function loadInitialData() {
         try {
-            // โหลดข้อมูลที่จำไว้ในเครื่อง
             if(sessionStorage.getItem('userFormDraft')) {
                 formDataDraft = JSON.parse(sessionStorage.getItem('userFormDraft'));
             }
@@ -368,9 +371,9 @@
     }
 
     // =======================================================
-    // 🌟 ระบบย่อรูปภาพให้เล็กจิ๋ว และแปลงเป็น Base64
+    // 🌟 ระบบย่อรูปภาพให้เล็กลงไปอีก (กว้าง 600px เพื่อความไว)
     // =======================================================
-    async function resizeImageToBase64(file, maxWidth = 800) {
+    async function resizeImageToBase64(file, maxWidth = 600) {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -389,26 +392,24 @@
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    // บีบอัดคุณภาพ 70% ให้โหลดเร็วปรื๊ด
-                    resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+                    resolve(canvas.toDataURL('image/jpeg', 0.7)); // บีบอัดแบบโหด 70%
                 };
             };
         });
     }
 
-    // เมื่อเด็กๆ เลือกรูป จะทำการจำรูปไว้ในเครื่องทันที (ยังไม่อัปขึ้นเน็ต)
+    // 🌟 เมื่อเด็กๆ เลือกรูป (ทำแค่ย่อแล้วโชว์ ยังไม่อัปโหลด)
     async function handleFileSelect(input, qId) {
         if (input.files && input.files[0]) {
             document.getElementById('loadingOverlay').style.display = 'flex';
             document.getElementById('loadingText').innerText = "กำลังประมวลผลรูปภาพ...";
             
             const file = input.files[0];
-            const base64Str = await resizeImageToBase64(file, 800); // ย่อรูป
+            const base64Str = await resizeImageToBase64(file, 600); // ย่อรูปเป็น Base64
             
-            formDataDraft[qId] = base64Str; // จำใส่ร่าง
+            formDataDraft[qId] = base64Str; 
             sessionStorage.setItem('userFormDraft', JSON.stringify(formDataDraft));
             
-            // โชว์รูปพรีวิวให้ดูทันที
             let previewArea = document.getElementById('preview_area_' + qId);
             if(previewArea) {
                 previewArea.innerHTML = `
@@ -423,64 +424,70 @@
         }
     }
 
-    // ฟังก์ชันส่ง Base64 ขึ้น ImgBB ตอนจบ
-    async function uploadBase64ToImgBB(base64Str) {
+    // 🌟 ระบบส่งรูปลง Cloudinary (จะรันเฉพาะตอนแอดมินอัปรูป หรือเด็กกดส่งฟอร์มด่านสุดท้าย)
+    async function uploadToCloudinary(base64Data) {
         return new Promise(async (resolve, reject) => {
+            if (CLOUDINARY_URL.includes("ใส่ชื่อ") || CLOUDINARY_UPLOAD_PRESET.includes("ใส่ชื่อ")) {
+                reject("กรุณาตั้งค่า API Cloudinary ในโค้ดก่อนครับ");
+                return;
+            }
             try {
                 let formData = new FormData();
-                formData.append("image", base64Str);
-                let response = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_API_KEY, { method: "POST", body: formData });
+                formData.append("file", base64Data);
+                formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+                let response = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
                 let result = await response.json();
-                if (result.success) resolve(result.data.url); 
+                
+                // Cloudinary จะคืนค่า URL ที่ปลอดภัยมาให้
+                if (result.secure_url) resolve(result.secure_url); 
                 else reject(result.error.message);
             } catch (error) { reject("ระบบเครือข่ายขัดข้อง"); }
         });
     }
 
-    // =======================================================
-    // ของแอดมินยังใช้แบบเดิม เพราะแอดมินเน็ตแรง
-    // =======================================================
-    async function uploadImageToImgBBForAdmin(file) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                let formData = new FormData();
-                formData.append("image", file);
-                let response = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_API_KEY, { method: "POST", body: formData });
-                let result = await response.json();
-                if (result.success) resolve(result.data.url); 
-                else reject(result.error.message);
-            } catch (error) { reject("ระบบเครือข่ายขัดข้อง"); }
-        });
-    }
-
+    // ระบบอัปโหลดรูปตกแต่งเว็บของแอดมิน
     async function uploadThemeImage(input, type) {
         if (input.files && input.files[0]) {
             const statusText = document.getElementById('themeUploadStatus');
-            statusText.style.display = 'block'; statusText.innerText = "⏳ กำลังอัปโหลดรูปลงเซิร์ฟเวอร์...";
+            statusText.style.display = 'block'; statusText.innerText = "⏳ กำลังอัปโหลดรูปลง Cloudinary...";
             input.disabled = true;
             try {
-                const imageUrl = await uploadImageToImgBBForAdmin(input.files[0]);
-                if (type === 'banner') themeSettings.bannerUrl = imageUrl;
-                else if (type === 'bg') themeSettings.backgroundUrl = imageUrl;
-                await db.collection("settings").doc("theme").set(themeSettings);
-                applyTheme();
-                statusText.innerText = "✅ อัปโหลดสำเร็จ!";
-                setTimeout(() => statusText.style.display = 'none', 3000);
+                // แปลงไฟล์เป็น Base64 แบบชั่วคราวเพื่อส่งให้ฟังก์ชัน
+                const reader = new FileReader();
+                reader.readAsDataURL(input.files[0]);
+                reader.onload = async () => {
+                    const imageUrl = await uploadToCloudinary(reader.result);
+                    if (type === 'banner') themeSettings.bannerUrl = imageUrl;
+                    else if (type === 'bg') themeSettings.backgroundUrl = imageUrl;
+                    await db.collection("settings").doc("theme").set(themeSettings);
+                    applyTheme();
+                    statusText.innerText = "✅ อัปโหลดสำเร็จ!";
+                    setTimeout(() => statusText.style.display = 'none', 3000);
+                };
             } catch (error) { alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); statusText.style.display = 'none'; } 
             finally { input.disabled = false; }
         }
     }
     
+    // ระบบอัปโหลดรูปคำถามของแอดมิน
     async function uploadQuestionImage(input, index) {
         if (input.files && input.files[0]) {
             saveCurrentInputState(); 
             const btn = document.getElementById('saveFormBtn');
             btn.innerHTML = "กำลังอัปโหลดรูปภาพ... ⏳"; btn.disabled = true;
             try {
-                const imageUrl = await uploadImageToImgBBForAdmin(input.files[0]);
-                questionsData[index].imageUrl = imageUrl; renderForm(); 
-            } catch (error) { alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); } 
-            finally { btn.innerHTML = "💾 บันทึกโครงสร้างฟอร์ม"; btn.disabled = false; }
+                const reader = new FileReader();
+                reader.readAsDataURL(input.files[0]);
+                reader.onload = async () => {
+                    const imageUrl = await uploadToCloudinary(reader.result);
+                    questionsData[index].imageUrl = imageUrl; renderForm(); 
+                    btn.innerHTML = "💾 บันทึกโครงสร้างฟอร์ม"; btn.disabled = false;
+                };
+            } catch (error) { 
+                alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); 
+                btn.innerHTML = "💾 บันทึกโครงสร้างฟอร์ม"; btn.disabled = false;
+            } 
         }
     }
 
@@ -568,8 +575,7 @@
                 const div = document.createElement('div'); 
                 div.className = 'form-group';
                 div.style.animationDelay = `${idx * 0.1}s`;
-                
-                // โหลดค่า Draft
+
                 let savedValue = formDataDraft[q.id] || "";
 
                 if(q.type === 'section') {
@@ -608,11 +614,9 @@
                         div.innerHTML += `<input type="number" name="${q.id}" value="${savedValue}" ${minAttr} ${maxAttr} ${q.isRequired?'required':''} ${errAttr} placeholder="ระบุตัวเลข">`;
                     }
                     else if(q.type === 'file') {
-                        // ไม่ใส่ required ถ้าในร่างมี Base64 รูปแล้ว
-                        let reqAttr = (q.isRequired && !savedValue.startsWith('data:image')) ? 'required' : '';
+                        let reqAttr = (q.isRequired && (!savedValue || !savedValue.startsWith('data:image'))) ? 'required' : '';
                         div.innerHTML += `<input type="file" name="${q.id}" accept="image/*" ${reqAttr} onchange="handleFileSelect(this, '${q.id}')">`;
                         
-                        // แสดงพื้นที่สำหรับโชว์รูปตัวอย่าง
                         let previewContent = "";
                         if (savedValue && savedValue.startsWith('data:image')) {
                             previewContent = `
@@ -639,7 +643,6 @@
         }
     }
 
-    // เซฟข้อความลง Draft ก่อนเปลี่ยนหน้า
     function saveTextDraftCurrentPage() {
         let pgs = []; let temp = [];
         questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
@@ -648,7 +651,7 @@
         const currentQuestions = pgs[currentFormPage];
         
         for (let q of currentQuestions) {
-            if (q.type === 'section' || q.type === 'info' || q.type === 'file') continue; // ข้ามไฟล์เพราะเซฟไปแล้วตอนเลือก
+            if (q.type === 'section' || q.type === 'info' || q.type === 'file') continue; 
             
             if (q.type === 'checkbox') {
                 const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
@@ -680,6 +683,10 @@
                     }
                 } else {
                     const el = document.querySelector(`[name="${q.id}"]`);
+                    // ถ้าช่องอัปโหลดมีร่างไว้แล้ว ก็ให้ข้าม validation ได้
+                    if(q.type === 'file' && q.isRequired && (!el || !el.files[0]) && formDataDraft[q.id]) {
+                        continue;
+                    }
                     if (el && !el.checkValidity()) {
                         el.reportValidity(); 
                         return; 
@@ -776,7 +783,7 @@
         }
     }
 
-    // 🌟 ระบบส่งข้อมูลก้อนสุดท้าย
+    // 🌟 ระบบส่งข้อมูลก้อนสุดท้ายขึ้น Cloudinary 
     async function submitForm() {
         let pgs = []; let temp = [];
         questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
@@ -790,6 +797,9 @@
                 if (checked.length === 0) { alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`); return; }
             } else {
                 const el = document.querySelector(`[name="${q.id}"]`);
+                if(q.type === 'file' && q.isRequired && (!el || !el.files[0]) && formDataDraft[q.id]) {
+                    continue; 
+                }
                 if (el && !el.checkValidity()) { el.reportValidity(); return; }
             }
         }
@@ -805,10 +815,10 @@
                 if(q.type === 'section' || q.type === 'info') continue;
                 
                 let savedData = formDataDraft[q.id];
+                // 🌟 ตรวจสอบว่าถ้าเป็น Base64 ให้ส่งให้ Cloudinary
                 if(q.type === 'file' && savedData && savedData.startsWith('data:image')) {
-                    // แปลง Base64 กลับเป็นรหัสส่งขึ้นฟ้า
-                    let rawBase64 = savedData.split(',')[1];
-                    finalAnswers[q.id] = await uploadBase64ToImgBB(rawBase64);
+                    // ส่ง Base64 เข้า Cloudinary
+                    finalAnswers[q.id] = await uploadToCloudinary(savedData);
                 } else {
                     finalAnswers[q.id] = savedData || "-"; 
                 }
@@ -824,6 +834,9 @@
                 answers: finalAnswers 
             });
             
+            sessionStorage.removeItem('userFormDraft');
+            formDataDraft = {};
+
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('formContainerBlock').style.display = 'none';
             document.getElementById('successScreen').style.display = 'block';
@@ -981,8 +994,17 @@
             if(q.type==='section' || q.type === 'info') return;
             
             let val = s.answers[q.id] || "-";
-            if(val.includes('i.ibb.co') || val.includes('http')) {
-                html += `<div style="margin-bottom:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><strong>${q.label}:</strong><br><img src="${val}" style="max-height:200px; border-radius:8px; margin-top:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);"><br><a href="${val}" target="_blank" style="display:inline-block; margin-top:10px; font-size:13px; font-weight:bold; color:var(--primary-color); text-decoration:none;">🔗 เปิดดูรูปเต็ม</a></div>`;
+            // 🌟 รองรับการโชว์รูปจาก Cloudinary (res.cloudinary.com) ด้วย
+            if(val.includes('i.ibb.co') || val.includes('res.cloudinary.com') || val.includes('http')) {
+                // 🌟 ทริคย่อรูประดับเทพ: เติม /w_300/ ในลิงก์ Cloudinary เพื่อให้หน้าแอดมินโหลดพรีวิวรูปเร็วขึ้น
+                let previewUrl = val;
+                if(val.includes('res.cloudinary.com/')) {
+                    previewUrl = val.replace('/upload/', '/upload/w_300/');
+                }
+                
+                html += `<div style="margin-bottom:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><strong>${q.label}:</strong><br>
+                <img loading="lazy" src="${previewUrl}" style="max-height:200px; border-radius:8px; margin-top:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);"><br>
+                <a href="${val}" target="_blank" style="display:inline-block; margin-top:10px; font-size:13px; font-weight:bold; color:var(--primary-color); text-decoration:none;">🔗 เปิดดูรูปเต็ม</a></div>`;
             } else {
                 html += `<div style="margin-bottom:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><strong>${q.label}:</strong> <span style="color:#2980b9; font-weight:500;">${val}</span></div>`;
             }

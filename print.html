@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>พิมพ์ใบสมัคร - การประกวด</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { 
+            background: #525659; /* สีเทาๆ เหมือนเปิดดู PDF */
+            display: flex; 
+            justify-content: center; 
+            padding: 40px 20px; 
+            font-family: 'Prompt', sans-serif; 
+            margin: 0;
+        }
+        
+        /* จำลองกระดาษ A4 ขึ้นมาบนจอ */
+        .a4-paper { 
+            background: white; 
+            width: 210mm; 
+            min-height: 297mm; 
+            padding: 20mm; 
+            box-sizing: border-box; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            color: #000;
+        }
+        
+        /* ตกแต่งด้านในใบสมัคร */
+        .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px double #333; }
+        .print-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; }
+        .print-appid-box { display: inline-block; border: 2px solid #000; padding: 10px 25px; font-size: 20px; font-weight: bold; margin-bottom: 10px; border-radius: 8px; }
+        
+        .print-table { width: 100%; border-collapse: collapse; font-size: 16px; margin-bottom: 30px; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 12px; text-align: left; vertical-align: middle; }
+        .print-table th { background-color: #f0f0f0; }
+        
+        .print-img { max-height: 200px; max-width: 250px; border-radius: 8px; display: block; border: 1px solid #ccc; margin: 0 auto; }
+        
+        .print-signature { text-align: right; margin-top: 60px; font-size: 18px; margin-right: 20px; }
+        
+        #loadingMsg { color: white; font-size: 24px; text-align: center; }
+
+        /* ========================================= */
+        /* พอสั่ง Print จริงๆ ระบบจะยึด CSS ตรงนี้ไปใช้ */
+        /* ========================================= */
+        @media print {
+            body { background: white; padding: 0; }
+            .a4-paper { width: 100%; min-height: auto; padding: 0; box-shadow: none; border: none; }
+            @page { size: A4 portrait; margin: 15mm; }
+            tr { page-break-inside: avoid; } /* กันตารางขาดครึ่งหน้า */
+            .print-table th { -webkit-print-color-adjust: exact; background-color: #f0f0f0 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loadingMsg">⏳ กำลังดึงข้อมูลและจัดเตรียมหน้ากระดาษ...</div>
+
+    <div class="a4-paper" id="paper" style="display: none;">
+        <div class="print-header">
+            <div class="print-title" id="printFormTitle">ใบสมัครประกวดหนูน้อยสงกรานต์</div>
+            <div class="print-appid-box">รหัสผู้สมัคร: <span id="printAppId" style="color: #e74c3c;"></span></div>
+            <div style="font-size: 16px; color: #555;">วันที่สมัคร: <span id="printTimestamp"></span></div>
+        </div>
+        
+        <table class="print-table">
+            <tbody id="printTableBody">
+                </tbody>
+        </table>
+        
+        <div class="print-signature">
+            <p>ลงชื่อ.......................................................ผู้สมัคร</p>
+        </div>
+    </div>
+
+<script>
+    // 1. ตั้งค่า Firebase ให้ตรงกับหน้าหลัก
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
+        authDomain: "register-wisutikasat.firebaseapp.com",
+        projectId: "register-wisutikasat",
+        messagingSenderId: "572965765143",
+        appId: "1:572965765143:web:534acca9ea1a54ff939c52"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 2. ฟังก์ชันหลักสำหรับดึงข้อมูลมาทำหน้ากระดาษ
+    async function loadAndPrint() {
+        // ดึงค่า ID จาก URL เช่น print.html?id=SK-ABC12
+        const urlParams = new URLSearchParams(window.location.search);
+        const appId = urlParams.get('id');
+
+        if (!appId) {
+            document.getElementById('loadingMsg').innerText = "❌ ไม่พบรหัสผู้สมัครในลิงก์";
+            return;
+        }
+
+        try {
+            // ดึงข้อมูลจากฐานข้อมูลพร้อมๆ กันทั้ง 3 อย่าง (ข้อมูลผู้สมัคร, ชื่อหัวเว็บ, โครงสร้างคำถาม)
+            const [subDoc, themeDoc, formDoc] = await Promise.all([
+                db.collection("submissions").doc(appId).get(),
+                db.collection("settings").doc("theme").get(),
+                db.collection("settings").doc("form").get()
+            ]);
+
+            if (!subDoc.exists) {
+                document.getElementById('loadingMsg').innerText = "❌ ไม่พบข้อมูลการสมัครของรหัสนี้";
+                return;
+            }
+
+            const data = subDoc.data();
+            const formTitle = themeDoc.exists && themeDoc.data().formTitle ? themeDoc.data().formTitle : "ใบสมัครเข้าร่วมกิจกรรม";
+            const questions = formDoc.exists ? formDoc.data().questions : [];
+
+            // ยัดข้อมูลใส่กระดาษ
+            document.getElementById('printFormTitle').innerHTML = formTitle;
+            document.getElementById('printAppId').innerText = data.appId;
+            document.getElementById('printTimestamp').innerText = data.timestamp;
+
+            const tbody = document.getElementById('printTableBody');
+            
+            // วนลูปเรียงคำถาม
+            questions.forEach(q => {
+                if (q.type === 'section') {
+                    tbody.innerHTML += `<tr><td colspan="2" style="background:#e0e0e0; padding:12px; font-weight:bold; font-size:18px;">${q.label}</td></tr>`;
+                    return;
+                }
+                
+                let val = data.answers[q.id] || "-";
+                let valHtml = val;
+
+                // ถ้าระบบพบว่าเป็นลิงก์รูปภาพ ให้แสดงเป็นรูปแทนข้อความ
+                if (val.includes('i.ibb.co') || val.includes('http')) {
+                    valHtml = `<img src="${val}" class="print-img">`;
+                }
+
+                tbody.innerHTML += `<tr><td style="width: 35%; font-weight:bold;">${q.label}</td><td>${valHtml}</td></tr>`;
+            });
+
+            // ซ่อนข้อความโหลด และโชว์กระดาษ
+            document.getElementById('loadingMsg').style.display = 'none';
+            document.getElementById('paper').style.display = 'block';
+
+            // 🌟 รอให้รูปภาพโหลดเสร็จ 100% แล้วค่อยเด้งหน้าต่างปริ้นท์
+            const images = document.getElementsByTagName('img');
+            let loadedCount = 0;
+
+            const triggerPrint = () => {
+                // รออีกนิดเผื่อให้เบราว์เซอร์จัดบรรทัดเรียบร้อย แล้วสั่งปริ้นท์
+                setTimeout(() => { window.print(); }, 500);
+            };
+
+            if (images.length === 0) {
+                triggerPrint();
+            } else {
+                for (let img of images) {
+                    if (img.complete) {
+                        loadedCount++;
+                        if (loadedCount === images.length) triggerPrint();
+                    } else {
+                        img.onload = () => { loadedCount++; if (loadedCount === images.length) triggerPrint(); };
+                        img.onerror = () => { loadedCount++; if (loadedCount === images.length) triggerPrint(); };
+                    }
+                }
+            }
+
+        } catch (error) {
+            document.getElementById('loadingMsg').innerText = "❌ ระบบขัดข้อง: " + error.message;
+        }
+    }
+
+    // เริ่มทำงานทันทีที่เปิดหน้าเว็บ
+    loadAndPrint();
+
+</script>
+</body>
+</html>

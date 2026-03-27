@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>พิมพ์ใบสมัคร - การประกวด</title>
+    <title>ตรวจสอบและพิมพ์ใบสมัคร</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -13,28 +13,36 @@
 
     <style>
         body { 
-            background: #525659; 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-start;
-            padding: 40px 20px; 
+            background: #34495e; 
             font-family: 'Prompt', sans-serif; 
             margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             min-height: 100vh;
         }
         
-        /* 🌟 พื้นที่ A4 จำลอง (ต้องกำหนดกว้าง 800px เพื่อให้ html2pdf แคปภาพได้สัดส่วนที่ถูกต้องเสมอ) */
+        /* 🌟 กรอบสำหรับแสดง Preview (บนมือถือจะใช้นิ้วเลื่อนซ้ายขวาได้) */
+        .preview-wrapper {
+            width: 100%;
+            max-width: 840px;
+            overflow-x: auto; /* เปิดให้เลื่อนซ้ายขวาบนมือถือ */
+            padding-bottom: 10px;
+            display: none; /* ซ่อนไว้ก่อนจนกว่าจะโหลดเสร็จ */
+            border-radius: 8px;
+        }
+
+        /* 🌟 กระดาษ A4 (บังคับกว้าง 800px เพื่อให้สัดส่วน PDF เป๊ะ 100%) */
         .a4-paper { 
             background: white; 
             width: 800px; 
-            max-width: 800px;
+            min-width: 800px;
             padding: 40px; 
             box-sizing: border-box; 
             color: #000;
-            /* ซ่อนไว้ก่อน เดี๋ยวค่อยโชว์ตอนสร้าง PDF */
-            position: absolute;
-            left: -9999px;
-            top: 0;
+            margin: 0 auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         
         /* ตกแต่งด้านในใบสมัคร */
@@ -46,15 +54,14 @@
         .print-table th, .print-table td { border: 1px solid #000; padding: 10px; text-align: left; vertical-align: middle; word-wrap: break-word; }
         .print-table th { background-color: #f0f0f0; }
         
-        /* ล็อกสัดส่วนคอลัมน์ให้ตายตัว ป้องกันตารางเบี้ยว */
+        /* ล็อกสัดส่วนคอลัมน์ */
         .col-header { width: 35%; font-weight: bold; }
         .col-answer { width: 65%; }
 
         .print-img { max-height: 180px; max-width: 100%; border-radius: 8px; display: block; border: 1px solid #ccc; margin: 0 auto; }
-        
         .print-signature { text-align: right; margin-top: 50px; font-size: 16px; margin-right: 20px; }
         
-        /* 🌟 UI หน้าจอโหลด (จะแสดงอยู่กลางจอ ระหว่างที่ระบบแอบสร้าง PDF อยู่หลังบ้าน) */
+        /* 🌟 UI หน้าจอโหลด */
         .loading-container {
             background: white;
             padding: 40px;
@@ -63,12 +70,12 @@
             text-align: center;
             max-width: 400px;
             width: 100%;
-            z-index: 10;
+            margin-top: 10vh;
         }
         
         .loader {
             border: 5px solid #f3f3f3; 
-            border-top: 5px solid #e67e22; 
+            border-top: 5px solid #3498db; 
             border-radius: 50%; 
             width: 50px; 
             height: 50px; 
@@ -76,52 +83,73 @@
             margin: 0 auto 20px auto;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .success-btn {
-            display: none;
-            background: linear-gradient(135deg, #27ae60, #2ecc71);
-            color: white;
-            border: none;
-            padding: 12px 25px;
+
+        /* 🌟 แถบปุ่มกดด้านล่าง */
+        .action-bar {
+            display: none; /* ซ่อนไว้ก่อน */
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 15px 30px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
             font-family: 'Prompt';
             cursor: pointer;
-            margin-top: 20px;
-            width: 100%;
+            border: none;
+            transition: 0.2s;
+            color: white;
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.4); }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        
+        .btn-download { background: linear-gradient(135deg, #e67e22, #d35400); }
+        .btn-close { background: linear-gradient(135deg, #95a5a6, #7f8c8d); }
     </style>
 </head>
 <body>
 
     <div class="loading-container" id="statusBox">
         <div class="loader" id="spinner"></div>
-        <h3 style="color: #333; margin: 0 0 10px 0;" id="statusTitle">กำลังสร้างไฟล์ PDF...</h3>
-        <p style="color: #777; font-size: 14px; margin: 0;" id="statusDesc">กรุณารอสักครู่ ระบบกำลังดึงรูปภาพและจัดเตรียมเอกสาร</p>
-        
-        <button class="success-btn" id="closeBtn" onclick="window.close()">ปิดหน้านี้</button>
+        <h3 style="color: #333; margin: 0 0 10px 0;" id="statusTitle">กำลังโหลดใบสมัคร...</h3>
+        <p style="color: #777; font-size: 14px; margin: 0;" id="statusDesc">กรุณารอสักครู่ ระบบกำลังจัดเตรียมเอกสาร</p>
     </div>
 
-    <div class="a4-paper" id="paper">
-        <div class="print-header">
-            <div class="print-title" id="printFormTitle">ใบสมัครประกวดหนูน้อยสงกรานต์</div>
-            <div class="print-appid-box">รหัสผู้สมัคร: <span id="printAppId" style="color: #e74c3c;"></span></div>
-            <div style="font-size: 14px; color: #555;">วันที่สมัคร: <span id="printTimestamp"></span></div>
+    <div class="preview-wrapper" id="previewWrapper">
+        <div class="a4-paper" id="paper">
+            <div class="print-header">
+                <div class="print-title" id="printFormTitle">ใบสมัครประกวดหนูน้อยสงกรานต์</div>
+                <div class="print-appid-box">รหัสผู้สมัคร: <span id="printAppId" style="color: #e74c3c;"></span></div>
+                <div style="font-size: 14px; color: #555;">วันที่สมัคร: <span id="printTimestamp"></span></div>
+            </div>
+            
+            <table class="print-table">
+                <tbody id="printTableBody">
+                    </tbody>
+            </table>
+            
+            <div class="print-signature">
+                <p>ลงชื่อ.......................................................ผู้สมัคร</p>
+            </div>
         </div>
-        
-        <table class="print-table">
-            <tbody id="printTableBody">
-                </tbody>
-        </table>
-        
-        <div class="print-signature">
-            <p>ลงชื่อ.......................................................ผู้สมัคร</p>
-        </div>
+    </div>
+
+    <div class="action-bar" id="actionBar">
+        <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()">📥 ดาวน์โหลดใบสมัคร (PDF)</button>
+        <button class="btn btn-close" onclick="window.close()">❌ ปิดหน้าต่างนี้</button>
     </div>
 
 <script>
-    // 1. ตั้งค่า Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
         authDomain: "register-wisutikasat.firebaseapp.com",
@@ -132,10 +160,9 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ตัวแปรเก็บข้อมูล
     let globalAppId = "";
 
-    async function loadAndGeneratePDF() {
+    async function loadAndPreview() {
         const urlParams = new URLSearchParams(window.location.search);
         globalAppId = urlParams.get('id');
 
@@ -145,7 +172,6 @@
         }
 
         try {
-            // ดึงข้อมูล 3 ส่วน
             const [subDoc, themeDoc, formDoc] = await Promise.all([
                 db.collection("submissions").doc(globalAppId).get(),
                 db.collection("settings").doc("theme").get(),
@@ -161,7 +187,7 @@
             const formTitle = themeDoc.exists && themeDoc.data().formTitle ? themeDoc.data().formTitle : "ใบสมัครเข้าร่วมกิจกรรม";
             const questions = formDoc.exists ? formDoc.data().questions : [];
 
-            // 1. หยอดข้อมูลลงกระดาษ A4
+            // ใส่ข้อมูลลงกระดาษ
             document.getElementById('printFormTitle').innerHTML = formTitle;
             document.getElementById('printAppId').innerText = data.appId;
             document.getElementById('printTimestamp').innerText = data.timestamp;
@@ -182,7 +208,7 @@
                 let val = data.answers[q.id] || "-";
                 let valHtml = val;
 
-                // 🌟 ดักจับลิงก์รูปภาพ (สำคัญ: ต้องเติม crossorigin="anonymous" เพื่อให้ html2pdf แคปภาพข้ามโดเมนได้)
+                // ดักจับรูปภาพ (ต้องมี crossorigin="anonymous" เพื่อให้แคปภาพลง PDF ได้)
                 if (val.includes('i.ibb.co') || val.includes('res.cloudinary.com') || val.includes('http')) {
                     valHtml = `<img crossorigin="anonymous" src="${val}" class="print-img">`;
                 }
@@ -190,21 +216,27 @@
                 tbody.innerHTML += `<tr><td class="col-header">${q.label}</td><td class="col-answer">${valHtml}</td></tr>`;
             });
 
-            // 2. ดักรอให้รูปภาพทุกรูปโหลดเสร็จ 100% ก่อนแคปหน้าจอ (แก้ปัญหาหน้าขาว)
+            // รอให้รูปภาพโหลดเสร็จ แล้วค่อยโชว์ Preview
             const paperElement = document.getElementById('paper');
             const images = paperElement.getElementsByTagName('img');
             let loadedCount = 0;
 
+            const showPreviewUI = () => {
+                document.getElementById('statusBox').style.display = 'none'; // ปิดหน้าโหลด
+                document.getElementById('previewWrapper').style.display = 'block'; // โชว์กระดาษ
+                document.getElementById('actionBar').style.display = 'flex'; // โชว์ปุ่มกด
+            };
+
             if (images.length === 0) {
-                createPDF(paperElement, data.appId);
+                showPreviewUI();
             } else {
                 for (let img of images) {
                     if (img.complete) {
                         loadedCount++;
-                        if (loadedCount === images.length) createPDF(paperElement, data.appId);
+                        if (loadedCount === images.length) showPreviewUI();
                     } else {
-                        img.onload = () => { loadedCount++; if (loadedCount === images.length) createPDF(paperElement, data.appId); };
-                        img.onerror = () => { loadedCount++; if (loadedCount === images.length) createPDF(paperElement, data.appId); };
+                        img.onload = () => { loadedCount++; if (loadedCount === images.length) showPreviewUI(); };
+                        img.onerror = () => { loadedCount++; if (loadedCount === images.length) showPreviewUI(); };
                     }
                 }
             }
@@ -214,41 +246,48 @@
         }
     }
 
-    // ฟังก์ชันสร้าง PDF (ใช้ html2pdf)
-    function createPDF(element, appId) {
-        document.getElementById('statusDesc').innerText = "กำลังแปลงข้อมูลเป็นไฟล์ PDF...";
-        
-        // เลื่อนหน้าจอขึ้นบนสุดก่อนแคป (แก้บักแคปติดขอบขาว)
-        window.scrollTo(0, 0);
+    // 🌟 ฟังก์ชันดาวน์โหลด PDF เมื่อผู้ใช้กดปุ่ม
+    function downloadPDF() {
+        const btn = document.getElementById('downloadBtn');
+        btn.disabled = true;
+        btn.innerHTML = "กำลังสร้าง PDF ⏳...";
 
+        // เลื่อนหน้าจอไปซ้ายสุดและบนสุด เพื่อป้องกันปัญหา html2pdf แคปภาพแหว่งบนมือถือ
+        window.scrollTo(0, 0);
+        const wrapper = document.getElementById('previewWrapper');
+        wrapper.scrollLeft = 0;
+        
+        // 🌟 ปลดล็อก overflow ชั่วคราวเพื่อให้แคปเจอร์ได้เต็มใบ
+        wrapper.style.overflowX = 'visible';
+
+        const element = document.getElementById('paper');
+        
         const opt = {
-            margin:       [10, 10, 10, 10], // ขอบกระดาษ [บน, ซ้าย, ล่าง, ขวา]
-            filename:     `ใบสมัคร_${appId}.pdf`,
+            margin:       [10, 10, 10, 10], 
+            filename:     `ใบสมัคร_${globalAppId}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { 
-                scale: 2,           // ความคมชัด (2 เท่า)
-                useCORS: true,      // อนุญาตให้โหลดรูปภาพจากเว็บอื่น (ImgBB, Cloudinary)
-                windowWidth: 800,   // 🌟 บังคับกว้าง 800px เสมอ (ไม่ว่ามือถือจะจอเล็กแค่ไหน)
-                scrollY: 0
+                scale: 2, 
+                useCORS: true, 
+                windowWidth: 800, 
+                scrollY: 0,
+                scrollX: 0
             },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // สั่งสร้างและดาวน์โหลด
         html2pdf().set(opt).from(element).save().then(() => {
-            showSuccess();
+            // คืนค่าปุ่มและ CSS กลับสภาพเดิม
+            btn.disabled = false;
+            btn.innerHTML = "✅ โหลดสำเร็จ! (คลิกโหลดซ้ำได้)";
+            btn.style.background = "linear-gradient(135deg, #27ae60, #2ecc71)";
+            wrapper.style.overflowX = 'auto'; // ล็อกกลับมาให้เลื่อนบนมือถือได้
         }).catch(err => {
-            showError("เกิดข้อผิดพลาดตอนสร้าง PDF", err.message);
+            btn.disabled = false;
+            btn.innerHTML = "❌ เกิดข้อผิดพลาด ลองใหม่";
+            wrapper.style.overflowX = 'auto';
+            alert("เกิดข้อผิดพลาดในการโหลด: " + err.message);
         });
-    }
-
-    // ตัวช่วยเปลี่ยน UI สถานะ
-    function showSuccess() {
-        document.getElementById('spinner').style.display = 'none';
-        document.getElementById('statusTitle').innerText = "✅ ดาวน์โหลดสำเร็จ!";
-        document.getElementById('statusTitle').style.color = "#2ecc71";
-        document.getElementById('statusDesc').innerText = `ไฟล์ "ใบสมัคร_${globalAppId}.pdf" ถูกบันทึกลงในเครื่องของคุณแล้ว`;
-        document.getElementById('closeBtn').style.display = 'block';
     }
 
     function showError(title, desc) {
@@ -259,7 +298,7 @@
     }
 
     // เริ่มทำงานทันที
-    loadAndPrint();
+    loadAndPreview();
 
 </script>
 </body>

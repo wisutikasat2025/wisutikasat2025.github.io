@@ -400,7 +400,6 @@
 
     function removeQuestionImage(index) { saveCurrentInputState(); questionsData[index].imageUrl = ""; renderForm(); }
 
-    // 🌟 อัปเกรด Form Builder ให้รองรับ Date และ Number พร้อมเงื่อนไข
     function renderForm() {
         const content = document.getElementById('form-content');
         content.innerHTML = '';
@@ -410,6 +409,7 @@
                 div.className = 'form-group';
                 div.style.animationDelay = `${i * 0.05}s`;
                 if(q.type === 'section') div.style.border = '2px solid #1abc9c';
+                else if (q.type === 'info') div.style.border = '2px solid #3498db';
                 else div.style.border = '2px dashed #bdc3c7';
 
                 let optionsBuilderHtml = '';
@@ -421,7 +421,6 @@
                     optionsBuilderHtml += `<button type="button" onclick="addOptionBox(${i})" style="background: #3498db; color: white; border: none; border-radius: 6px; padding: 8px 15px; cursor: pointer; font-size: 13px; margin-top: 5px; font-family: 'Prompt';">+ เพิ่มตัวเลือก</button></div>`;
                 }
 
-                // 🌟 เพิ่มช่องกรอกเงื่อนไขสำหรับประเภท 'ตัวเลข'
                 let validationBuilderHtml = '';
                 if (q.type === 'number') {
                     validationBuilderHtml = `
@@ -452,6 +451,7 @@
                     <div class="edit-row" style="margin-top:10px; align-items:center;">
                         <select id="edit_type_${i}" onchange="questionTypeChanged(${i})" style="flex:1;">
                             <option value="section" ${q.type==='section'?'selected':''}>📋 แบ่งหน้า / ส่วนคำชี้แจง</option>
+                            <option value="info" ${q.type==='info'?'selected':''}>💬 กล่องข้อความอธิบาย (ไม่มีช่องกรอก)</option>
                             <option value="text" ${q.type==='text'?'selected':''}>ข้อความสั้น</option>
                             <option value="number" ${q.type==='number'?'selected':''}>ตัวเลข (Number)</option>
                             <option value="date" ${q.type==='date'?'selected':''}>วันที่ (ปฏิทิน)</option>
@@ -459,7 +459,7 @@
                             <option value="checkbox" ${q.type==='checkbox'?'selected':''}>เลือกหลายข้อ (Checkbox)</option>
                             <option value="file" ${q.type==='file'?'selected':''}>อัปโหลดไฟล์รูปภาพ</option>
                         </select>
-                        <select id="edit_req_${i}" ${q.type==='section'?'style="display:none;"':''} style="flex:1;">
+                        <select id="edit_req_${i}" ${q.type==='section' || q.type==='info' ? 'style="display:none;"':''} style="flex:1;">
                             <option value="true" ${q.isRequired ? 'selected' : ''}>บังคับตอบ (*)</option>
                             <option value="false" ${!q.isRequired ? 'selected' : ''}>ไม่บังคับ</option>
                         </select>
@@ -483,15 +483,26 @@
                 div.className = 'form-group';
                 div.style.animationDelay = `${idx * 0.1}s`;
 
+                // 🌟 จัดการกล่องอธิบาย (Info Box) หรือส่วนแบ่งหน้า
                 if(q.type === 'section') {
-                    div.innerHTML = `<div class="section-header"><h3>${q.label}</h3><p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">${q.description}</p></div>`;
+                    div.innerHTML = `<div class="section-header"><h3>${q.label}</h3><p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">${q.description.replace(/\n/g, '<br>')}</p></div>`;
                     if (q.imageUrl) div.innerHTML += `<img src="${q.imageUrl}" class="question-img" style="margin-top: 10px;">`;
                     div.style.background = 'none'; div.style.border = 'none'; div.style.padding = '0'; div.style.boxShadow = 'none';
-                } else {
-                    div.innerHTML = `<label>${q.label} ${q.isRequired?'<span class="required-star">*</span>':''}</label><p class="question-desc">${q.description}</p>`;
+                } 
+                else if (q.type === 'info') {
+                    div.innerHTML = `
+                        <div style="background: #eaf2f8; padding: 15px; border-left: 4px solid #3498db; border-radius: 8px;">
+                            <h4 style="margin: 0 0 8px 0; color: #2980b9; font-size: 16px;">${q.label}</h4>
+                            <p style="margin: 0; font-size: 14px; color: #444; line-height: 1.5;">${q.description.replace(/\n/g, '<br>')}</p>
+                        </div>
+                    `;
+                    if (q.imageUrl) div.innerHTML += `<img src="${q.imageUrl}" class="question-img" style="margin-top: 15px;">`;
+                    div.style.background = 'none'; div.style.border = 'none'; div.style.padding = '0'; div.style.boxShadow = 'none';
+                } 
+                else {
+                    div.innerHTML = `<label>${q.label} ${q.isRequired?'<span class="required-star">*</span>':''}</label><p class="question-desc">${q.description.replace(/\n/g, '<br>')}</p>`;
                     if (q.imageUrl) div.innerHTML += `<img src="${q.imageUrl}" class="question-img">`;
 
-                    // 🌟 เพิ่มการ Render ประเภทต่างๆ แบบสมบูรณ์
                     if(q.type === 'dropdown') {
                         div.innerHTML += `<select name="${q.id}" ${q.isRequired?'required':''}><option value="">-- เลือก --</option>${q.options.map(o=>`<option value="${o}">${o}</option>`).join('')}</select>`;
                     }
@@ -525,10 +536,8 @@
         }
     }
 
-    // 🌟 ระบบตรวจเช็คการข้ามหน้า (Validation ล็อกปุ่มถัดไป)
     function changeFormPage(targetPage) {
         if(targetPage > currentFormPage) {
-            // ดึงคำถามเฉพาะในหน้าปัจจุบันมาตรวจ
             let pgs = []; let temp = [];
             questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
             if(temp.length>0) pgs.push(temp);
@@ -536,21 +545,20 @@
             const currentQuestions = pgs[currentFormPage];
             
             for (let q of currentQuestions) {
-                if (q.type === 'section') continue;
+                // 🌟 ข้ามการตรวจถ้าเป็นกล่องอธิบายหรือส่วนแบ่งหน้า
+                if (q.type === 'section' || q.type === 'info') continue;
                 
-                // ตรวจ Checkbox บังคับตอบอย่างน้อย 1 ข้อ
                 if (q.type === 'checkbox' && q.isRequired) {
                     const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
                     if (checked.length === 0) {
                         alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`);
-                        return; // หยุดการเปลี่ยนหน้า
+                        return; 
                     }
                 } else {
-                    // ตรวจเงื่อนไข HTML5 อัตโนมัติ (พวกตัวเลข วันที่ ค่าว่าง)
                     const el = document.querySelector(`[name="${q.id}"]`);
                     if (el && !el.checkValidity()) {
-                        el.reportValidity(); // โชว์ข้อความแจ้งเตือนแดงๆ ที่ช่องนั้น
-                        return; // หยุดการเปลี่ยนหน้า
+                        el.reportValidity(); 
+                        return; 
                     }
                 }
             }
@@ -593,7 +601,6 @@
                     q.options = newOptions;
                 }
                 
-                // 🌟 เซฟค่า Validation สำหรับตัวเลข
                 if(q.type === 'number') {
                     let editMin = document.getElementById(`edit_min_${i}`);
                     let editMax = document.getElementById(`edit_max_${i}`);
@@ -644,16 +651,16 @@
         }
     }
 
-    // 🌟 ระบบส่งใบสมัคร (มีระบบเช็ค Validation ด่านสุดท้ายก่อนส่ง)
     async function submitForm() {
-        // เช็คความถูกต้องหน้าสุดท้าย
         let pgs = []; let temp = [];
         questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
         if(temp.length>0) pgs.push(temp);
 
         const currentQuestions = pgs[currentFormPage];
         for (let q of currentQuestions) {
-            if (q.type === 'section') continue;
+            // 🌟 ข้ามการตรวจถ้าเป็นกล่องอธิบาย
+            if (q.type === 'section' || q.type === 'info') continue;
+            
             if (q.type === 'checkbox' && q.isRequired) {
                 const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
                 if (checked.length === 0) {
@@ -676,7 +683,9 @@
         try {
             let ans = {};
             for(let q of questionsData) {
-                if(q.type === 'section') continue;
+                // 🌟 ข้ามการบันทึกคำตอบถ้าเป็นกล่องอธิบาย
+                if(q.type === 'section' || q.type === 'info') continue;
+                
                 if(q.type === 'checkbox') {
                     const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
                     ans[q.id] = Array.from(checked).map(cb => cb.value).join(', ');
@@ -743,15 +752,15 @@
 
     function exportToCSV() {
         if (submissions.length === 0) {
-            alert("ยังไม่มีข้อมูลผู้สมัครให้ Export ครับ");
-            return;
+            alert("ยังไม่มีข้อมูลผู้สมัครให้ Export ครับ"); return;
         }
 
         let csvContent = "รหัสผู้สมัคร,วันที่สมัคร,";
         let questionKeys = []; 
         
         questionsData.forEach(q => {
-            if (q.type !== 'section') {
+            // 🌟 ข้ามการดึงหัวข้อถ้าเป็นกล่องอธิบาย
+            if (q.type !== 'section' && q.type !== 'info') {
                 csvContent += `"${q.label}",`;
                 questionKeys.push(q.id);
             }
@@ -856,7 +865,9 @@
         `;
         
         questionsData.forEach(q => {
-            if(q.type==='section') return;
+            // 🌟 ข้ามการโชว์กล่องอธิบายในหลังบ้าน
+            if(q.type==='section' || q.type === 'info') return;
+            
             let val = s.answers[q.id] || "-";
             if(val.includes('i.ibb.co') || val.includes('http')) {
                 html += `<div style="margin-bottom:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><strong>${q.label}:</strong><br><img src="${val}" style="max-height:200px; border-radius:8px; margin-top:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);"><br><a href="${val}" target="_blank" style="display:inline-block; margin-top:10px; font-size:13px; font-weight:bold; color:var(--primary-color); text-decoration:none;">🔗 เปิดดูรูปเต็ม</a></div>`;

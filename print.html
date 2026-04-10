@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตรวจสอบและพิมพ์ใบสมัคร</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body { 
+            background: #34495e; 
+            font-family: 'Prompt', sans-serif; 
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .preview-wrapper {
+            width: 100%;
+            max-width: 840px;
+            overflow-x: auto; 
+            padding-bottom: 10px;
+            display: none; 
+            border-radius: 8px;
+        }
+
+        .a4-paper { 
+            background: white; 
+            width: 800px; 
+            min-width: 800px;
+            padding: 40px; 
+            box-sizing: border-box; 
+            color: #000;
+            margin: 0 auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px double #333; }
+        .print-title { font-size: 24px; font-weight: 600; margin-bottom: 15px; }
+        .print-appid-box { display: inline-block; border: 2px solid #000; padding: 10px 25px; font-size: 20px; font-weight: bold; margin-bottom: 10px; border-radius: 8px; }
+        
+        .print-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 30px; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 10px; text-align: left; vertical-align: middle; word-wrap: break-word; }
+        .print-table th { background-color: #f0f0f0; }
+        
+        .col-header { width: 35%; font-weight: bold; }
+        .col-answer { width: 65%; }
+
+        .print-img { max-height: 180px; max-width: 100%; border-radius: 8px; display: block; border: 1px solid #ccc; margin: 0 auto; }
+        .print-signature { text-align: right; margin-top: 50px; font-size: 16px; margin-right: 20px; }
+        
+        .loading-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            margin-top: 10vh;
+        }
+        
+        .loader {
+            border: 5px solid #f3f3f3; 
+            border-top: 5px solid #3498db; 
+            border-radius: 50%; 
+            width: 50px; 
+            height: 50px; 
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .action-bar {
+            display: none; 
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'Prompt';
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+            color: white;
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.4); }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        
+        .btn-download { background: linear-gradient(135deg, #e67e22, #d35400); }
+        .btn-close { background: linear-gradient(135deg, #95a5a6, #7f8c8d); }
+    </style>
+</head>
+<body>
+
+    <div class="loading-container" id="statusBox">
+        <div class="loader" id="spinner"></div>
+        <h3 style="color: #333; margin: 0 0 10px 0;" id="statusTitle">กำลังโหลดใบสมัคร...</h3>
+        <p style="color: #777; font-size: 14px; margin: 0;" id="statusDesc">กรุณารอสักครู่ ระบบกำลังจัดเตรียมเอกสาร</p>
+    </div>
+
+    <div class="preview-wrapper" id="previewWrapper">
+        <div class="a4-paper" id="paper">
+            <div class="print-header">
+                <div class="print-title" id="printFormTitle">ใบสมัครประกวดหนูน้อยสงกรานต์</div>
+                <div class="print-appid-box">รหัสผู้สมัคร: <span id="printAppId" style="color: #e74c3c;"></span></div>
+                <div style="font-size: 14px; color: #555;">วันที่สมัคร: <span id="printTimestamp"></span></div>
+            </div>
+            
+            <table class="print-table">
+                <tbody id="printTableBody">
+                    </tbody>
+            </table>
+            
+            <div class="print-signature">
+                <p>ลงชื่อ.......................................................ผู้สมัคร</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-bar" id="actionBar">
+        <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()">📥 ดาวน์โหลดใบสมัคร (PDF)</button>
+        <button class="btn btn-close" onclick="window.close()">❌ ปิดหน้าต่างนี้</button>
+    </div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
+        authDomain: "register-wisutikasat.firebaseapp.com",
+        projectId: "register-wisutikasat",
+        messagingSenderId: "572965765143",
+        appId: "1:572965765143:web:534acca9ea1a54ff939c52"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let globalAppId = "";
+
+    async function loadAndPreview() {
+        const urlParams = new URLSearchParams(window.location.search);
+        globalAppId = urlParams.get('id');
+
+        if (!globalAppId) {
+            showError("ไม่พบรหัสผู้สมัคร", "กรุณาเข้าสู่หน้านี้ผ่านลิงก์จากระบบรับสมัครหลัก");
+            return;
+        }
+
+        try {
+            const [subDoc, themeDoc, formDoc] = await Promise.all([
+                db.collection("submissions").doc(globalAppId).get(),
+                db.collection("settings").doc("theme").get(),
+                db.collection("settings").doc("form").get()
+            ]);
+
+            if (!subDoc.exists) {
+                showError("ไม่พบข้อมูล", "ไม่พบข้อมูลการสมัครของรหัส " + globalAppId);
+                return;
+            }
+
+            const data = subDoc.data();
+            const formTitle = themeDoc.exists && themeDoc.data().formTitle ? themeDoc.data().formTitle : "ใบสมัครเข้าร่วมกิจกรรม";
+            const questions = formDoc.exists ? formDoc.data().questions : [];
+
+            document.getElementById('printFormTitle').innerHTML = formTitle;
+            document.getElementById('printAppId').innerText = data.appId;
+            document.getElementById('printTimestamp').innerText = data.timestamp;
+
+            const tbody = document.getElementById('printTableBody');
+            
+            questions.forEach(q => {
+                if (q.type === 'section') {
+                    tbody.innerHTML += `<tr><td colspan="2" style="background:#e0e0e0; padding:10px; font-weight:bold; font-size:16px;">${q.label}</td></tr>`;
+                    return;
+                }
+                
+                if (q.type === 'info') {
+                    tbody.innerHTML += `<tr><td colspan="2" style="background:#f9f9f9; padding:10px; font-size:14px; font-style:italic;"><strong>${q.label}</strong><br>${q.description.replace(/\n/g, '<br>')}</td></tr>`;
+                    return;
+                }
+                
+                let val = data.answers[q.id] || "-";
+                let valHtml = val;
+
+                // 🌟 แก้ไข: ลบโค้ดรอภาพออก ให้แสดงภาพแบบ lazy load เลย
+                if (val.includes('i.ibb.co') || val.includes('res.cloudinary.com') || val.includes('http')) {
+                    valHtml = `<img crossorigin="anonymous" src="${val}" class="print-img">`;
+                }
+
+                tbody.innerHTML += `<tr><td class="col-header">${q.label}</td><td class="col-answer">${valHtml}</td></tr>`;
+            });
+
+            // 🌟 แก้ไข: แสดง Preview ทันที ไม่ต้องรอรูปภาพโหลดเสร็จ!
+            document.getElementById('statusBox').style.display = 'none'; 
+            document.getElementById('previewWrapper').style.display = 'block'; 
+            document.getElementById('actionBar').style.display = 'flex'; 
+
+        } catch (error) {
+            showError("ระบบขัดข้อง", error.message);
+        }
+    }
+
+    function downloadPDF() {
+        const btn = document.getElementById('downloadBtn');
+        btn.disabled = true;
+        btn.innerHTML = "กำลังสร้าง PDF ⏳...";
+
+        window.scrollTo(0, 0);
+        const wrapper = document.getElementById('previewWrapper');
+        wrapper.scrollLeft = 0;
+        
+        wrapper.style.overflowX = 'visible';
+
+        const element = document.getElementById('paper');
+        
+        const opt = {
+            margin:       [10, 10, 10, 10], 
+            filename:     `ใบสมัคร_${globalAppId}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true, 
+                windowWidth: 800, 
+                scrollY: 0,
+                scrollX: 0
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            btn.disabled = false;
+            btn.innerHTML = "✅ โหลดสำเร็จ! (คลิกโหลดซ้ำได้)";
+            btn.style.background = "linear-gradient(135deg, #27ae60, #2ecc71)";
+            wrapper.style.overflowX = 'auto'; 
+        }).catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = "❌ เกิดข้อผิดพลาด ลองใหม่";
+            wrapper.style.overflowX = 'auto';
+            alert("เกิดข้อผิดพลาดในการโหลด: " + err.message);
+        });
+    }
+
+    function showError(title, desc) {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('statusTitle').innerText = "❌ " + title;
+        document.getElementById('statusTitle').style.color = "#e74c3c";
+        document.getElementById('statusDesc').innerText = desc;
+    }
+
+    loadAndPreview();
+
+</script>
+</body>
+</html>

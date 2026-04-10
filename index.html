@@ -5,127 +5,167 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบรับสมัคร - หนูน้อยสงกรานต์วิสุทธิกษัตริย์ ๒๕๖๙</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
     <style>
         :root { --primary-color: #6a1b9a; --primary-hover: #4a148c; --bg-color: #f3e5f5; }
-        body { font-family: 'Prompt', sans-serif; background-color: var(--bg-color); background-size: cover; background-attachment: fixed; background-position: center; color: #333; padding: 20px; margin: 0; transition: background 0.5s; }
-        .container { max-width: 800px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow: hidden; position: relative; }
-        .banner-img { width: 100%; height: 250px; object-fit: cover; display: block; border-bottom: 5px solid var(--primary-color); }
+        body { font-family: 'Prompt', sans-serif; background-color: var(--bg-color); background-size: cover; background-attachment: fixed; background-position: center; color: #333; padding: 20px; margin: 0; transition: background 0.5s ease-in-out; }
+        
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .container { max-width: 800px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); overflow: hidden; position: relative; min-height: 400px; backdrop-filter: blur(10px); animation: fadeInUp 0.5s ease-out; }
+        .banner-img { width: 100%; height: 100%; object-fit: cover; display: block; border-bottom: 5px solid var(--primary-color); }
         .form-body { padding: 30px; }
-        h2 { text-align: center; color: var(--primary-color); margin-bottom: 30px; line-height: 1.5; }
         
-        .form-group { margin-bottom: 25px; padding: 15px; border-radius: 8px; transition: 0.3s; background: #fff; border: 1px solid #eee; }
+        h2 { text-align: center; color: var(--primary-color); margin-bottom: 30px; line-height: 1.5; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
         
-        .section-header { background-color: var(--primary-color); color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .section-header h3 { margin: 0; font-size: 18px; }
-        .section-header p { margin: 5px 0 0 0; font-size: 14px; font-weight: 300; opacity: 0.9; }
-
-        label { display: block; font-weight: 600; font-size: 16px; margin-bottom: 5px; color: #2c3e50; }
-        .question-desc { font-size: 14px; color: #7f8c8d; margin-bottom: 10px; }
+        .form-group { margin-bottom: 25px; padding: 20px; border-radius: 10px; background: #fff; border: 1px solid #eaeaea; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: transform 0.2s, box-shadow 0.2s; animation: fadeInUp 0.4s ease-out backwards; }
+        .form-group:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.05); }
+        
+        .section-header { background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(106, 27, 154, 0.2); }
+        .section-header h3 { margin: 0; font-size: 19px; }
+        label { display: block; font-weight: 600; font-size: 16px; margin-bottom: 8px; color: #2c3e50; }
+        .question-desc { font-size: 14px; color: #7f8c8d; margin-bottom: 12px; }
         .question-img { max-width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ddd; }
-        .required-star { color: red; }
+        .required-star { color: #e74c3c; }
         
-        input[type="text"], input[type="password"], input[type="number"], input[type="file"], input[type="date"], select { 
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: 'Prompt', sans-serif; 
-        }
-        
+        input, select, textarea { width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Prompt'; transition: border-color 0.3s, box-shadow 0.3s; font-size: 15px; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 3px rgba(106, 27, 154, 0.1); }
         .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
-        .checkbox-group label { display: inline-flex; align-items: center; font-weight: 400; cursor: pointer; }
-        .checkbox-group input { width: auto; margin-right: 10px; transform: scale(1.2); }
-
-        .btn-submit { width: 100%; padding: 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 6px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 20px; font-family: 'Prompt';}
-        .btn-submit:hover { background-color: var(--primary-hover); }
-        .btn-back { background-color: #95a5a6; }
-        .btn-back:hover { background-color: #7f8c8d; }
         
-        .admin-toggle-btn { position: absolute; top: 15px; right: 15px; background: white; border: none; font-size: 20px; cursor: pointer; color: #555; border-radius: 50%; width: 40px; height: 40px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
-        .login-box { background: white; padding: 30px; border-radius: 12px; width: 300px; text-align: center; }
-        .login-box input { margin-bottom: 15px; }
-        .btn-login { width: 100%; padding: 10px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-family: 'Prompt';}
-
-        .admin-tabs { display: none; display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .tab-btn { padding: 10px 15px; border: none; background: #eee; cursor: pointer; border-radius: 6px; font-family: 'Prompt'; font-weight: 600; color: #555; }
-        .tab-btn.active { background: var(--primary-color); color: white; }
-        .tab-content { display: none; }
+        .btn-submit { width: 100%; padding: 15px; background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 20px; font-family: 'Prompt'; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(106,27,154,0.3); }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(106,27,154,0.4); }
+        .btn-back { background: linear-gradient(135deg, #95a5a6, #7f8c8d); flex: 1; box-shadow: 0 4px 15px rgba(149,165,166,0.3); }
+        
+        .top-btn-group { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 10; }
+        .icon-btn { background: white; border: none; font-size: 18px; cursor: pointer; border-radius: 50%; width: 45px; height: 45px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.2s; display: flex; justify-content: center; align-items: center; }
+        .icon-btn:hover { transform: scale(1.1); }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(5px); animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+        .login-box { background: white; padding: 35px; border-radius: 15px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: translateY 0.3s; }
+        
+        .admin-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 15px; border: none; background: #f1f2f6; cursor: pointer; border-radius: 8px; font-family: 'Prompt'; font-size: 13px; font-weight: 500; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary-color); color: white; box-shadow: 0 4px 10px rgba(106,27,154,0.2); }
+        .tab-content { display: none; animation: fadeInUp 0.4s ease-out; }
         .tab-content.active { display: block; }
-
-        .edit-mode .form-group { background-color: #f8f9fa; border: 2px dashed var(--primary-color); }
+        
         .edit-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
-        .edit-row input[type="text"], .edit-row select { flex: 1; min-width: 150px; }
-        .edit-row .full-width { flex: 100%; }
-        .btn-delete { background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 10px 15px; cursor: pointer; font-family: 'Prompt';}
+        .options-container { background: #fdfdfd; border: 1px solid #ddd; padding: 15px; border-radius: 8px; width: 100%; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; border-radius: 8px; overflow: hidden; }
+        th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; font-weight: 600; }
         
-        .options-container { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; width: 100%; margin-top: 5px; }
-        .option-item { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
-        .btn-remove-opt { background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; font-size: 12px; }
-        .btn-add-opt { background: #3498db; color: white; border: none; border-radius: 4px; padding: 8px 15px; cursor: pointer; font-size: 13px; margin-top: 5px; font-family: 'Prompt';}
+        #loadingOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(5px); }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .success-screen, .closed-screen { text-align: center; padding: 40px 20px; animation: fadeInUp 0.5s ease-out; }
+        .success-icon { font-size: 70px; color: #2ecc71; margin-bottom: 20px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .closed-icon { font-size: 70px; color: #e74c3c; margin-bottom: 20px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes scaleIn { from{transform:scale(0);} to{transform:scale(1);} }
 
-        .admin-settings-panel { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
-        .admin-panel-bottom { display: none; margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; }
-        .btn-add, .btn-save { color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; font-family: 'Prompt'; margin: 5px;}
-        .btn-add { background: #2ecc71; } .btn-save { background: var(--primary-color); }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f4f4f4; }
-        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 15px; }
-        .stat-bar { background: var(--primary-color); height: 10px; border-radius: 5px; margin-top: 5px; }
-        .btn-remove-img { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: 'Prompt'; margin-top: 5px;}
+        .file-status-preview { display: block; margin-top: 5px; font-size: 12px; color: #2ecc71; font-weight: bold; }
+        .preview-img-container { margin-top: 10px; display: inline-block; position: relative; }
+        .preview-img-container img { max-height: 120px; border-radius: 8px; border: 2px solid var(--primary-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .preview-badge { position: absolute; top: -10px; right: -10px; background: #2ecc71; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
+<div id="loadingOverlay">
+    <div class="loader"></div>
+    <p id="loadingText" style="font-family:'Prompt'; margin-top:15px; font-weight:500; color:var(--primary-color);">กำลังโหลดระบบรับสมัคร...</p>
+</div>
+
 <div class="modal-overlay" id="loginModal">
     <div class="login-box">
-        <h3 style="color: var(--primary-color); margin-top:0;">🔒 เข้าสู่ระบบผู้ดูแล</h3>
-        <input type="text" id="loginUser" placeholder="ชื่อผู้ใช้ (Username)">
-        <input type="password" id="loginPass" placeholder="รหัสผ่าน (Password)">
-        <button class="btn-login" onclick="processLogin()">เข้าสู่ระบบ</button>
-        <button class="btn-login" style="background: #ccc; margin-top: 10px;" onclick="closeLogin()">ยกเลิก</button>
+        <h3 style="font-family:'Prompt'; color:var(--primary-color); margin-top:0;">🔒 แอดมินล็อกอิน</h3>
+        <input type="text" id="loginUser" placeholder="Username" style="margin-bottom:15px;">
+        <input type="password" id="loginPass" placeholder="Password">
+        <button class="btn-submit" style="font-size:16px; padding:12px;" onclick="processLogin()">เข้าสู่ระบบ</button>
+        <button onclick="closeModal('loginModal')" style="margin-top:15px; background:none; border:none; cursor:pointer; font-family:'Prompt'; color:#95a5a6; font-weight:500;">ยกเลิก</button>
     </div>
 </div>
 
-<div class="container" id="mainContainer">
-    <button class="admin-toggle-btn" id="gearBtn" onclick="openLogin()" title="ระบบผู้ดูแล">⚙️</button>
-    <img id="bannerImage" src="" class="banner-img" style="display: none;" alt="Cover Banner">
+<div class="modal-overlay" id="searchModal">
+    <div class="login-box" style="width: 350px;">
+        <h3 style="font-family:'Prompt'; color:var(--primary-color); margin-top:0;">🔍 ค้นหาใบสมัคร</h3>
+        <p style="font-size:13px; color:gray; margin-bottom:15px;">กรอกรหัสใบสมัครเพื่อดูข้อมูลหรือโหลด PDF</p>
+        <input type="text" id="searchAppIdInput" placeholder="ตัวอย่าง: SK-ABC12" style="margin-bottom:15px; text-transform: uppercase;">
+        <button class="btn-submit" style="font-size:16px; padding:12px; background:linear-gradient(135deg, #3498db, #2980b9);" onclick="searchApp()">ค้นหาข้อมูล</button>
+        <button onclick="closeModal('searchModal')" style="margin-top:15px; background:none; border:none; cursor:pointer; font-family:'Prompt'; color:#95a5a6; font-weight:500;">ยกเลิก</button>
+        <div id="searchResult" style="margin-top: 20px; text-align: left; font-size: 14px;"></div>
+    </div>
+</div>
+
+<div class="container" id="mainContainer" style="display:none;">
+    <div class="top-btn-group" id="userBtnGroup">
+        <button class="icon-btn" onclick="openModal('searchModal')" title="ค้นหาใบสมัคร/โหลด PDF">🔍</button>
+        <button class="icon-btn" onclick="openModal('loginModal')" title="ผู้ดูแลระบบ">⚙️</button>
+    </div>
+
+    <img id="bannerImage" src="" class="banner-img" style="display:none;">
 
     <div class="form-body">
         
-        <div class="admin-tabs" id="adminTabsMenu" style="display: none;">
+        <div class="admin-tabs" id="adminTabsMenu" style="display:none;">
             <button class="tab-btn active" onclick="switchTab('tab-form')">📝 จัดการฟอร์ม</button>
-            <button class="tab-btn" onclick="switchTab('tab-stats')">📊 สถิติ & ข้อมูลผู้สมัคร</button>
-            <button class="tab-btn" onclick="switchTab('tab-settings')">⚙️ ตั้งค่า & ผู้ใช้</button>
-            <button class="tab-btn" style="background: #e74c3c; color: white; margin-left: auto;" onclick="logout()">ออกจากระบบ</button>
+            <button class="tab-btn" onclick="switchTab('tab-stats')">📊 ข้อมูล & Export</button>
+            <button class="tab-btn" onclick="switchTab('tab-settings')">🎨 ตั้งค่าระบบ</button>
+            <button class="tab-btn" style="background:#e74c3c; color:#fff; margin-left:auto;" onclick="logout()">ออกจากระบบ</button>
         </div>
 
         <div id="tab-stats" class="tab-content">
-            <h3 style="color: var(--primary-color);">📊 สถิติผู้สมัคร (จำลอง)</h3>
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button onclick="renderStatsView('summary')" style="padding: 8px 15px; cursor:pointer; font-family:'Prompt';">ดูภาพรวม (Summary)</button>
-                <button onclick="renderStatsView('individual')" style="padding: 8px 15px; cursor:pointer; font-family:'Prompt';">ดูรายบุคคล (Individual)</button>
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:15px; border-bottom: 2px solid #eee; padding-bottom: 15px;">
+                <div style="display:flex; gap:10px;">
+                    <button class="tab-btn active" onclick="renderStatsView('summary')">สรุปภาพรวม</button>
+                    <button class="tab-btn" onclick="renderStatsView('individual')">ดูรายบุคคล / โหลด PDF</button>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-submit" style="width:auto; padding:8px 15px; margin:0; background:linear-gradient(135deg, #27ae60, #2ecc71); font-size:14px;" onclick="exportToCSV()">📊 Export Excel</button>
+                    <button class="btn-submit" style="width:auto; padding:8px 15px; margin:0; background:linear-gradient(135deg, #c0392b, #e74c3c); font-size:14px;" onclick="deleteAllSubmissions()">🗑️ ล้างข้อมูลทั้งหมด</button>
+                </div>
             </div>
             <div id="statsContentArea"></div>
         </div>
 
         <div id="tab-settings" class="tab-content">
-            <div class="admin-settings-panel">
-                <h3 style="margin-top: 0; color: var(--primary-color);">🎨 ตั้งค่าธีมเว็บไซต์</h3>
-                <label style="font-size: 14px;">อัปโหลดรูปหน้าปกเว็บ (Banner):</label>
-                <input type="file" accept="image/*" onchange="uploadThemeImage(this, 'banner')" style="margin-bottom: 15px;">
-                <label style="font-size: 14px;">อัปโหลดรูปพื้นหลังเว็บ (Background ลายไทย):</label>
-                <input type="file" accept="image/*" onchange="uploadThemeImage(this, 'bg')">
+            <div class="admin-settings-panel" style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h3 style="margin: 0; color: var(--primary-color);">🛑 สถานะแบบฟอร์มรับสมัคร</h3>
+                    <p style="margin:5px 0 0 0; font-size:13px; color:gray;">เปิดหรือปิดการรับข้อมูลจากหน้าเว็บ</p>
+                </div>
+                <button id="toggleFormStateBtn" class="btn-submit" style="width:auto; margin:0; padding:10px 25px;" onclick="toggleFormStatus()">กำลังโหลด...</button>
             </div>
 
-            <div class="admin-settings-panel">
-                <h3 style="margin-top: 0; color: var(--primary-color);">👥 จัดการผู้ดูแลระบบ (Admin)</h3>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <input type="text" id="newAdminUser" placeholder="ชื่อผู้ใช้ใหม่">
-                    <input type="password" id="newAdminPass" placeholder="รหัสผ่าน">
-                    <select id="newAdminRole">
-                        <option value="Super Admin">Super Admin (จัดการได้ทุกอย่าง)</option>
-                        <option value="Editor">Editor (ดูข้อมูลและแก้ฟอร์มได้อย่างเดียว)</option>
+            <div class="admin-settings-panel" style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px;">
+                <h3 style="margin-top: 0; color: var(--primary-color);">ข้อความหัวฟอร์ม (Form Title)</h3>
+                <input type="text" id="adminFormTitleInput" onchange="updateFormTitle()" placeholder="พิมพ์ชื่อโครงการ หรือหัวข้อรับสมัครที่นี่">
+            </div>
+
+            <div class="admin-settings-panel" style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px;">
+                <h3 style="margin-top: 0; color: var(--primary-color);">🎨 ตั้งค่ารูปภาพตกแต่ง</h3>
+                <label style="font-size: 14px;">อัปโหลดรูปหน้าปกเว็บ (Banner):</label>
+                <input type="file" accept="image/*" id="bannerUpload" onchange="uploadThemeImage(this, 'banner')" style="margin-bottom: 15px;">
+                <label style="font-size: 14px;">อัปโหลดรูปพื้นหลังเว็บ (Background ลายไทย):</label>
+                <input type="file" accept="image/*" id="bgUpload" onchange="uploadThemeImage(this, 'bg')">
+                <p id="themeUploadStatus" style="font-size: 13px; color: #2ecc71; display: none; font-weight: bold; margin-top: 10px;">กำลังอัปโหลดรูปภาพ...</p>
+            </div>
+
+            <div class="admin-settings-panel" style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+                <h3 style="margin-top: 0; color: var(--primary-color);">👥 จัดการผู้ดูแล</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <input type="text" id="newAdminUser" placeholder="ชื่อผู้ใช้ใหม่" style="flex:1; min-width:120px;">
+                    <input type="password" id="newAdminPass" placeholder="รหัสผ่าน" style="flex:1; min-width:120px;">
+                    <select id="newAdminRole" style="flex:1; min-width:120px;">
+                        <option value="Super Admin">Super Admin</option>
+                        <option value="Editor">Editor</option>
                     </select>
-                    <button class="btn-add-opt" onclick="addAdminUser()">เพิ่มผู้ใช้</button>
+                    <button style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-family: 'Prompt';" onclick="addAdminUser()">เพิ่ม</button>
                 </div>
                 <table>
                     <thead><tr><th>ชื่อผู้ใช้</th><th>รหัสผ่าน</th><th>บทบาท</th><th>จัดการ</th></tr></thead>
@@ -135,472 +175,895 @@
         </div>
 
         <div id="tab-form" class="tab-content active">
-            <h2 id="formTitle">🌸 ใบสมัครประกวดหนูน้อย<br>ประเพณีสงกรานต์วิสุทธิกษัตริย์ พ.ศ. ๒๕๖๙</h2>
-            <form id="dynamicForm">
-                <div id="form-content"></div>
-                <button type="button" class="btn-submit" id="submitBtn" onclick="submitForm()" style="display:none;">ส่งใบสมัคร</button>
-            </form>
-
-            <div class="admin-panel-bottom" id="adminFormControls">
-                <button class="btn-add" onclick="addNewQuestion()">+ เพิ่มคำถาม/คำชี้แจง</button>
-                <button class="btn-save" onclick="saveAdminChanges()">💾 บันทึกโครงสร้างฟอร์ม</button>
+            
+            <div id="formContainerBlock">
+                <h2 id="formTitleDisplay">กำลังโหลด...</h2>
+                <form id="dynamicForm"><div id="form-content"></div></form>
+                
+                <div id="adminFormControls" style="display:none; text-align:center; margin-top: 30px; border-top: 2px dashed #ddd; padding-top: 20px;">
+                    <button class="btn-submit" style="background:linear-gradient(135deg, #2ecc71, #27ae60); width: auto; padding: 12px 25px; margin-right: 10px;" onclick="addNewQuestion()">+ เพิ่มคำถาม / แบ่งหน้า</button>
+                    <button class="btn-submit" id="saveFormBtn" style="width: auto; padding: 12px 25px;" onclick="saveAdminChanges()">💾 บันทึกโครงสร้างฟอร์ม</button>
+                </div>
             </div>
-        </div>
 
+            <div id="closedScreen" class="closed-screen" style="display:none;">
+                <div class="closed-icon">🛑</div>
+                <h2 style="color: #2c3e50; margin-bottom: 5px;">ปิดรับสมัครแล้ว</h2>
+                <p style="font-size: 16px; color: #7f8c8d;">ขออภัย ขณะนี้ระบบได้ปิดรับการส่งข้อมูลแล้วครับ</p>
+                <button class="btn-submit btn-back" style="width: auto; padding: 10px 30px; margin-top: 20px;" onclick="location.reload()">โหลดหน้าเว็บใหม่</button>
+            </div>
+
+            <div id="successScreen" class="success-screen" style="display:none;">
+                <div class="success-icon">✔️</div>
+                <h2 style="color: #2c3e50; margin-bottom: 5px;">ส่งใบสมัครเรียบร้อยแล้ว!</h2>
+                <p style="font-size: 16px; color: #7f8c8d;">ขอบคุณที่เข้าร่วมกิจกรรมครับ</p>
+                
+                <div style="background: #f8f9fa; border: 2px dashed var(--primary-color); border-radius: 12px; padding: 20px; margin: 30px auto; max-width: 400px;">
+                    <p style="margin: 0; font-size: 14px; color: #555;">รหัสประจำตัวผู้สมัครของคุณคือ</p>
+                    <h1 id="successAppId" style="color: var(--primary-color); margin: 10px 0; font-size: 36px; letter-spacing: 2px;">SK-XXXX</h1>
+                    <p style="margin: 0; font-size: 12px; color: #e74c3c;">* โปรดจดรหัสนี้ไว้ เพื่อใช้ในการตรวจสอบข้อมูล</p>
+                </div>
+
+                <button id="downloadPdfBtn" class="btn-submit" style="width: auto; padding: 15px 40px; background: linear-gradient(135deg, #e67e22, #d35400);">🖨️ พิมพ์ใบสมัคร / บันทึกเป็น PDF</button>
+                <button class="btn-submit btn-back" style="width: auto; padding: 15px 40px; margin-left: 10px;" onclick="clearDraftAndReload()">กลับหน้าแรก</button>
+            </div>
+
+        </div>
     </div>
 </div>
 
 <script>
-    // --- 1. ฐานข้อมูลจำลอง ---
-    let isAdminMode = false;
-    let currentUserRole = "";
-    let currentFormPage = 0; // ตัวแปรเก็บหน้าที่ผู้ใช้กำลังดูอยู่
+    // ========================================================
+    // 🔴 1. ตั้งค่า API ของ Cloudinary แทน ImgBB 🔴
+    // ========================================================
+    const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dmjvkiok8/image/upload";
+    const CLOUDINARY_UPLOAD_PRESET = "WISUTIKASAT"; 
 
-    let adminUsers = [
-        { username: "ADMIN", password: "1234", role: "Super Admin" },
-        { username: "ADMIN2", password: "5678", role: "Editor" }
-    ];
-
-    let themeSettings = {
-        bannerUrl: "https://images.unsplash.com/photo-1552422535-c45813c61732?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        backgroundUrl: "" 
+    // 2. Config Firebase Database 
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
+        authDomain: "register-wisutikasat.firebaseapp.com",
+        projectId: "register-wisutikasat",
+        messagingSenderId: "572965765143",
+        appId: "1:572965765143:web:534acca9ea1a54ff939c52"
     };
 
-    let questionsData = [
-        { id: "s_01", label: "📋 คำชี้แจงส่วนที่ 1: กติกาการรับสมัคร", type: "section", description: "กรุณาเตรียมรูปถ่ายและข้อมูลให้พร้อมก่อนกดปุ่มถัดไป", isRequired: false, options: [], imageUrl: "" },
-        { id: "q_name", label: "ชื่อ-นามสกุล", type: "text", description: "ใส่คำนำหน้า", isRequired: true, options: [], imageUrl: "" },
-        { id: "s_02", label: "📋 คำชี้แจงส่วนที่ 2: รายละเอียดเพิ่มเติม", type: "section", description: "ข้อมูลส่วนนี้จะใช้ในการจัดกลุ่มการประกวด", isRequired: false, options: [], imageUrl: "" },
-        { id: "q_level", label: "ระดับชั้น", type: "dropdown", description: "", isRequired: true, options: ["อนุบาล 1", "อนุบาล 2", "ประถม 1"], imageUrl: "" },
-        { id: "q_pic", label: "รูปถ่าย", type: "file", description: "ไม่เกิน 10MB", isRequired: true, options: [], imageUrl: "" }
-    ];
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
+    let isAdminMode = false;
+    let currentUserRole = "";
+    let currentFormPage = 0; 
+    let themeSettings = { 
+        bannerUrl: "", 
+        backgroundUrl: "",
+        formTitle: "🌸 ใบสมัครประกวดหนูน้อยสงกรานต์ พ.ศ. ๒๕๖๙",
+        isFormOpen: true
+    };
+    let questionsData = [];
     let submissions = [];
+    let adminUsers = [ { username: "ADMIN", password: "1234", role: "Super Admin" } ];
+    
+    // 🌟 ระบบเก็บข้อมูลฉบับร่างชั่วคราว
+    let formDataDraft = {};
 
     const formContent = document.getElementById('form-content');
 
-    // --- 2. ระบบ Login & Tabs ---
-    function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
-    function closeLogin() { document.getElementById('loginModal').style.display = 'none'; document.getElementById('loginUser').value=''; document.getElementById('loginPass').value=''; }
+    async function loadInitialData() {
+        try {
+            if(sessionStorage.getItem('userFormDraft')) {
+                formDataDraft = JSON.parse(sessionStorage.getItem('userFormDraft'));
+            }
+
+            const adminsDoc = await db.collection("settings").doc("admins").get();
+            if (adminsDoc.exists) adminUsers = adminsDoc.data().users || adminUsers;
+
+            const themeDoc = await db.collection("settings").doc("theme").get();
+            if (themeDoc.exists) { themeSettings = { ...themeSettings, ...themeDoc.data() }; }
+
+            const formDoc = await db.collection("settings").doc("form").get();
+            if (formDoc.exists) {
+                questionsData = formDoc.data().questions || [];
+            } else {
+                questionsData = [
+                    { id: "s_01", label: "📋 คำชี้แจง", type: "section", description: "กรุณากรอกข้อมูลให้ครบถ้วน", isRequired: false, options: [], imageUrl: "" },
+                    { id: "q_name", label: "ชื่อ-นามสกุล", type: "text", description: "", isRequired: true, options: [], imageUrl: "" },
+                    { id: "q_pic", label: "อัปโหลดรูปถ่ายหน้าตรง", type: "file", description: "รองรับไฟล์ภาพเพื่อโชว์ใน PDF", isRequired: true, options: [], imageUrl: "" }
+                ];
+            }
+            
+            applyTheme();
+            
+            if(themeSettings.isFormOpen || isAdminMode) {
+                renderForm();
+                document.getElementById('formContainerBlock').style.display = 'block';
+            } else {
+                document.getElementById('formContainerBlock').style.display = 'none';
+                document.getElementById('closedScreen').style.display = 'block';
+            }
+            
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'block';
+        } catch (e) { 
+            console.error(e); 
+            document.getElementById('loadingText').innerText = `⚠️ โหลดข้อมูลไม่สำเร็จ: ${e.message}`;
+            document.querySelector('.loader').style.display = 'none';
+        }
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     
     function processLogin() {
         const u = document.getElementById('loginUser').value;
         const p = document.getElementById('loginPass').value;
         const foundUser = adminUsers.find(user => user.username === u && user.password === p);
-        
         if (foundUser) {
-            isAdminMode = true; currentUserRole = foundUser.role;
-            closeLogin();
+            isAdminMode = true; currentUserRole = foundUser.role; closeModal('loginModal');
             document.getElementById('adminTabsMenu').style.display = 'flex';
-            document.getElementById('gearBtn').style.display = 'none';
-            document.getElementById('formTitle').style.display = 'none';
-            switchTab('tab-form'); 
-            renderAdminUsersTable();
-            renderForm();
-        } else { alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!"); }
-    }
+            document.getElementById('userBtnGroup').style.display = 'none';
+            
+            document.getElementById('closedScreen').style.display = 'none';
+            document.getElementById('formContainerBlock').style.display = 'block';
 
-    function logout() {
-        if(!confirm("ต้องการออกจากระบบใช่หรือไม่?")) return;
-        isAdminMode = false; currentUserRole = ""; currentFormPage = 0;
-        document.getElementById('adminTabsMenu').style.display = 'none';
-        document.getElementById('gearBtn').style.display = 'block';
-        document.getElementById('formTitle').style.display = 'block';
-        switchTab('tab-form'); renderForm();
+            switchTab('tab-form'); renderAdminUsersTable(); renderForm();
+            updateToggleBtnUI(); 
+        } else { alert("รหัสผ่านไม่ถูกต้อง!"); }
     }
+    function logout() { location.reload(); }
 
     function switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
         event.currentTarget.classList.add('active');
+        
         if(tabId === 'tab-form') renderForm();
-        if(tabId === 'tab-stats') renderStatsView('summary');
-    }
-
-    // --- 3. อัปโหลดรูปภาพ ---
-    function uploadThemeImage(input, type) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                if (type === 'banner') {
-                    themeSettings.bannerUrl = e.target.result;
-                    document.getElementById('bannerImage').src = e.target.result;
-                    document.getElementById('bannerImage').style.display = 'block';
-                } else if (type === 'bg') {
-                    themeSettings.backgroundUrl = e.target.result;
-                    document.body.style.backgroundImage = `url('${e.target.result}')`;
-                }
-            };
-            reader.readAsDataURL(input.files[0]);
+        if(tabId === 'tab-stats') {
+            document.getElementById('statsContentArea').innerHTML = "<p style='text-align:center;'>กำลังโหลดข้อมูล...</p>";
+            loadSubmissionsAndRender('summary');
         }
     }
 
-    function uploadQuestionImage(input, index) {
+    async function loadSubmissionsAndRender(mode) {
+        try {
+            const snap = await db.collection("submissions").orderBy("timestamp", "desc").get();
+            submissions = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            renderStatsView(mode);
+        } catch(e) { alert("โหลดสถิติไม่ได้: " + e.message); }
+    }
+
+    function applyTheme() {
+        if(themeSettings.bannerUrl) { document.getElementById('bannerImage').src = themeSettings.bannerUrl; document.getElementById('bannerImage').style.display = 'block'; }
+        if(themeSettings.backgroundUrl) document.body.style.backgroundImage = `url('${themeSettings.backgroundUrl}')`;
+        document.getElementById('formTitleDisplay').innerHTML = themeSettings.formTitle;
+        document.getElementById('adminFormTitleInput').value = themeSettings.formTitle.replace(/<br>/g, '\n');
+    }
+
+    async function updateFormTitle() {
+        let newTitle = document.getElementById('adminFormTitleInput').value.replace(/\n/g, '<br>');
+        themeSettings.formTitle = newTitle;
+        document.getElementById('formTitleDisplay').innerHTML = themeSettings.formTitle;
+        await db.collection("settings").doc("theme").set(themeSettings);
+    }
+
+    function updateToggleBtnUI() {
+        const btn = document.getElementById('toggleFormStateBtn');
+        if(themeSettings.isFormOpen) {
+            btn.innerHTML = "🟢 สถานะ: เปิดรับสมัคร (กดเพื่อปิด)";
+            btn.style.background = "linear-gradient(135deg, #27ae60, #2ecc71)";
+        } else {
+            btn.innerHTML = "🔴 สถานะ: ปิดรับสมัคร (กดเพื่อเปิด)";
+            btn.style.background = "linear-gradient(135deg, #c0392b, #e74c3c)";
+        }
+    }
+
+    async function toggleFormStatus() {
+        themeSettings.isFormOpen = !themeSettings.isFormOpen;
+        updateToggleBtnUI();
+        try {
+            await db.collection("settings").doc("theme").set(themeSettings);
+            alert(themeSettings.isFormOpen ? "เปิดรับสมัครเรียบร้อยแล้ว!" : "ปิดฟอร์มรับสมัครแล้ว! (ผู้ใช้ทั่วไปจะไม่เห็นฟอร์ม)");
+        } catch (e) {
+            alert("อัปเดตไม่สำเร็จ: " + e.message);
+            themeSettings.isFormOpen = !themeSettings.isFormOpen;
+            updateToggleBtnUI();
+        }
+    }
+
+    // =======================================================
+    // 🌟 ระบบย่อรูปภาพให้เล็กลงไปอีก (กว้าง 600px เพื่อความไว)
+    // =======================================================
+    async function resizeImageToBase64(file, maxWidth = 600) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7)); // บีบอัดแบบโหด 70%
+                };
+            };
+        });
+    }
+
+    // 🌟 ระบบอัปโหลดขึ้น Cloudinary
+    async function uploadToCloudinary(base64Data) {
+        return new Promise(async (resolve, reject) => {
+            if (CLOUDINARY_URL.includes("ใส่ชื่อ") || CLOUDINARY_UPLOAD_PRESET.includes("ใส่ชื่อ")) {
+                reject("กรุณาตั้งค่า API Cloudinary ในโค้ดก่อนครับ");
+                return;
+            }
+            try {
+                let formData = new FormData();
+                formData.append("file", base64Data);
+                formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+                let response = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+                let result = await response.json();
+                
+                if (result.secure_url) resolve(result.secure_url); 
+                else reject(result.error.message);
+            } catch (error) { reject("ระบบเครือข่ายขัดข้อง"); }
+        });
+    }
+
+    // =======================================================
+    // 🌟 [อัปเกรดใหม่] เมื่อเด็กเลือกรูป ปุ๊บ โค้ดจะอัปโหลดขึ้น Cloudinary ทันที!!
+    // =======================================================
+    async function handleFileSelect(input, qId) {
+        if (input.files && input.files[0]) {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "กำลังอัปโหลดรูปภาพขึ้นระบบ... ⏳";
+            
+            try {
+                const file = input.files[0];
+                // ย่อรูปเป็น Base64 ก่อน
+                const base64Str = await resizeImageToBase64(file, 600); 
+                
+                // อัปโหลดขึ้น Cloudinary ทันที!
+                const imageUrl = await uploadToCloudinary(base64Str);
+                
+                // เก็บเฉพาะ URL ที่อัปโหลดสำเร็จแล้วลง Draft
+                formDataDraft[qId] = imageUrl; 
+                sessionStorage.setItem('userFormDraft', JSON.stringify(formDataDraft));
+                
+                // โชว์รูปพรีวิวให้ดูเพื่อความมั่นใจ
+                let previewArea = document.getElementById('preview_area_' + qId);
+                if(previewArea) {
+                    previewArea.innerHTML = `
+                        <div class="preview-img-container">
+                            <img src="${imageUrl}">
+                            <div class="preview-badge">✓</div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                alert("อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง: " + err);
+                input.value = ""; // เคลียร์ไฟล์ถ้าอัปไม่ติด ให้เลือกใหม่
+            } finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+    }
+
+    // =======================================================
+    // ของแอดมินอัปโหลดรูปตกแต่งเว็บ
+    // =======================================================
+async function uploadThemeImage(input, type) {
+        if (input.files && input.files[0]) {
+            const statusText = document.getElementById('themeUploadStatus');
+            statusText.style.display = 'block'; 
+            statusText.innerText = "⏳ กำลังย่อขนาดและอัปโหลดรูปลง Cloudinary...";
+            input.disabled = true;
+
+            try {
+                const file = input.files[0];
+                
+                // 🌟 แก้ตรงนี้: ย่อรูปหน้าปกและพื้นหลังให้เหลือความกว้าง 1600px (ชัดพอสำหรับจอคอม แต่ไฟล์เล็กมาก)
+                const base64Str = await resizeImageToBase64(file, 1600); 
+
+                // อัปโหลด Base64 ที่ย่อแล้วขึ้น Cloudinary
+                const imageUrl = await uploadToCloudinary(base64Str);
+                
+                if (type === 'banner') themeSettings.bannerUrl = imageUrl;
+                else if (type === 'bg') themeSettings.backgroundUrl = imageUrl;
+                
+                await db.collection("settings").doc("theme").set(themeSettings);
+                applyTheme();
+                
+                statusText.innerText = "✅ อัปโหลดสำเร็จ!";
+                setTimeout(() => statusText.style.display = 'none', 3000);
+            } catch (error) { 
+                alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); 
+                statusText.style.display = 'none'; 
+            } finally { 
+                input.disabled = false; 
+            }
+        }
+    }
+    
+    // ระบบอัปโหลดรูปคำถามของแอดมิน
+    async function uploadQuestionImage(input, index) {
         if (input.files && input.files[0]) {
             saveCurrentInputState(); 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                questionsData[index].imageUrl = e.target.result;
-                renderForm(); 
-            };
-            reader.readAsDataURL(input.files[0]);
+            const btn = document.getElementById('saveFormBtn');
+            btn.innerHTML = "กำลังอัปโหลดรูปภาพ... ⏳"; btn.disabled = true;
+            try {
+                const reader = new FileReader();
+                reader.readAsDataURL(input.files[0]);
+                reader.onload = async () => {
+                    const imageUrl = await uploadToCloudinary(reader.result);
+                    questionsData[index].imageUrl = imageUrl; renderForm(); 
+                    btn.innerHTML = "💾 บันทึกโครงสร้างฟอร์ม"; btn.disabled = false;
+                };
+            } catch (error) { 
+                alert("❌ อัปโหลดรูปภาพไม่สำเร็จ: " + error); 
+                btn.innerHTML = "💾 บันทึกโครงสร้างฟอร์ม"; btn.disabled = false;
+            } 
         }
     }
 
     function removeQuestionImage(index) { saveCurrentInputState(); questionsData[index].imageUrl = ""; renderForm(); }
 
-    function applyTheme() {
-        const banner = document.getElementById('bannerImage');
-        if (themeSettings.bannerUrl) { banner.src = themeSettings.bannerUrl; banner.style.display = 'block'; } else { banner.style.display = 'none'; }
-        if (themeSettings.backgroundUrl) { document.body.style.backgroundImage = `url('${themeSettings.backgroundUrl}')`; } else { document.body.style.backgroundImage = "none"; }
-    }
-
-    // --- 4. ระบบจัดการฟอร์ม (Form Builder) & Pagination ---
     function renderForm() {
-        formContent.innerHTML = ''; 
-        
-        if (isAdminMode) {
-            // โหมดแอดมิน: แสดงทุกข้อเรียงยาวลงมาเพื่อแก้ไข (ไม่แบ่งหน้า)
-            questionsData.forEach((q, index) => {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'form-group';
-                
-                let optionsBuilderHtml = '';
-                let reqDropdownHtml = (q.type === 'section') ? '' : `
-                    <select id="edit_req_${index}">
-                        <option value="true" ${q.isRequired ? 'selected' : ''}>บังคับตอบ (*)</option>
-                        <option value="false" ${!q.isRequired ? 'selected' : ''}>ไม่บังคับ</option>
-                    </select>
-                `;
+        const content = document.getElementById('form-content');
+        content.innerHTML = '';
+        if(isAdminMode) {
+            questionsData.forEach((q, i) => {
+                const div = document.createElement('div'); 
+                div.className = 'form-group';
+                div.style.animationDelay = `${i * 0.05}s`;
+                if(q.type === 'section') div.style.border = '2px solid #1abc9c';
+                else if (q.type === 'info') div.style.border = '2px solid #3498db';
+                else div.style.border = '2px dashed #bdc3c7';
 
+                let optionsBuilderHtml = '';
                 if (q.type === 'dropdown' || q.type === 'checkbox') {
                     optionsBuilderHtml = `<div class="options-container"><label style="font-size: 13px; color: #555;">จัดการตัวเลือก:</label>`;
                     q.options.forEach((opt, optIndex) => {
-                        optionsBuilderHtml += `<div class="option-item"><span>${optIndex + 1}.</span><input type="text" id="edit_opt_${index}_${optIndex}" value="${opt}"><button type="button" class="btn-remove-opt" onclick="removeOptionBox(${index}, ${optIndex})">✖ ลบ</button></div>`;
+                        optionsBuilderHtml += `<div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;"><span>${optIndex + 1}.</span><input type="text" id="edit_opt_${i}_${optIndex}" value="${opt}"><button type="button" onclick="removeOptionBox(${i}, ${optIndex})" style="background: #e74c3c; color: white; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px;">✖ ลบ</button></div>`;
                     });
-                    optionsBuilderHtml += `<button type="button" class="btn-add-opt" onclick="addOptionBox(${index})">+ เพิ่มตัวเลือก</button></div>`;
+                    optionsBuilderHtml += `<button type="button" onclick="addOptionBox(${i})" style="background: #3498db; color: white; border: none; border-radius: 6px; padding: 8px 15px; cursor: pointer; font-size: 13px; margin-top: 5px; font-family: 'Prompt';">+ เพิ่มตัวเลือก</button></div>`;
                 }
 
-                let imgPreviewHtml = '';
-                if (q.imageUrl) {
-                    imgPreviewHtml = `
-                        <div style="margin-top: 10px; padding: 10px; border: 1px dashed #ccc; border-radius: 6px; text-align: center; background: #fff;">
-                            <img src="${q.imageUrl}" style="max-height: 120px; border-radius: 4px; display: block; margin: 0 auto 10px auto;">
-                            <button type="button" class="btn-remove-img" onclick="removeQuestionImage(${index})">🗑️ ลบรูปภาพนี้ทิ้ง</button>
+                let validationBuilderHtml = '';
+                if (q.type === 'number') {
+                    validationBuilderHtml = `
+                        <div class="options-container" style="margin-top:10px; background: #fdfdfd;">
+                            <label style="font-size: 13px; color: var(--primary-color); font-weight: bold;">⚙️ ตั้งค่าเงื่อนไขตัวเลข (ไม่ระบุก็ได้):</label>
+                            <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
+                                <label style="font-size: 12px; color: #555;">ค่าน้อยสุด:</label>
+                                <input type="number" id="edit_min_${i}" value="${q.min || ''}" style="flex:1; padding:6px; font-size:13px;">
+                                <label style="font-size: 12px; color: #555;">ค่ามากสุด:</label>
+                                <input type="number" id="edit_max_${i}" value="${q.max || ''}" style="flex:1; padding:6px; font-size:13px;">
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <input type="text" id="edit_err_${i}" value="${q.customErrorMsg || ''}" placeholder="ข้อความแจ้งเตือน (ถ้ากรอกผิดเงื่อนไข)" style="width:100%; padding:6px; font-size:13px;">
+                            </div>
                         </div>
                     `;
                 }
 
-                groupDiv.innerHTML = `
-                    <div class="edit-row">
-                        <input type="text" id="edit_label_${index}" value="${q.label}" placeholder="${q.type === 'section' ? 'หัวข้อคำชี้แจง (แบ่งหน้า)' : 'หัวข้อคำถาม *'}" class="full-width" style="font-weight:bold; font-size:16px; ${q.type === 'section' ? 'background:#e8f8f5; border-color:#1abc9c;' : ''}">
-                    </div>
-                    <div class="edit-row">
-                        <textarea id="edit_desc_${index}" placeholder="คำอธิบายเพิ่มเติม" class="full-width" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: 'Prompt';">${q.description}</textarea>
-                    </div>
-                    
-                    <div class="edit-row" style="background: #e9ecef; padding: 10px; border-radius: 6px; width: 100%;">
-                        <label style="font-size: 14px; font-weight: 500;">🖼️ อัปโหลดรูปภาพประกอบ (ถ้ามี):</label>
-                        <input type="file" accept="image/*" onchange="uploadQuestionImage(this, ${index})" style="background: white; width: 100%;">
-                        ${imgPreviewHtml}
-                    </div>
+                let imgPreviewHtml = '';
+                if (q.imageUrl) {
+                    imgPreviewHtml = `<div style="margin-top: 10px; padding: 10px; border: 1px dashed #ccc; border-radius: 8px; text-align: center; background: #fff;"><img src="${q.imageUrl}" style="max-height: 120px; border-radius: 6px; display: block; margin: 0 auto 10px auto;"><button type="button" onclick="removeQuestionImage(${i})" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: 'Prompt';">🗑️ ลบรูปทิ้ง</button></div>`;
+                }
 
-                    <div class="edit-row" style="margin-top: 10px;">
-                        <select id="edit_type_${index}" onchange="questionTypeChanged(${index})">
-                            <option value="section" ${q.type === 'section' ? 'selected' : ''}>📋 คำชี้แจง (เพื่อขึ้นหน้าใหม่)</option>
-                            <option value="text" ${q.type === 'text' ? 'selected' : ''}>ข้อความสั้น</option>
-                            <option value="dropdown" ${q.type === 'dropdown' ? 'selected' : ''}>เลื่อนลง (Dropdown)</option>
-                            <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>เลือกหลายข้อ (Checkbox)</option>
-                            <option value="file" ${q.type === 'file' ? 'selected' : ''}>อัปโหลดไฟล์</option>
+                div.innerHTML = `
+                    <div class="edit-row"><input type="text" id="edit_label_${i}" value="${q.label}" style="font-weight:bold; width:100%; font-size:16px;" placeholder="หัวข้อคำถาม / คำชี้แจง"></div>
+                    <div class="edit-row"><textarea id="edit_desc_${i}" style="width:100%;" placeholder="คำอธิบายเพิ่มเติม">${q.description}</textarea></div>
+                    <div class="edit-row" style="background: #f8f9fa; padding: 15px; border-radius: 8px; width: 100%; box-sizing: border-box;"><label style="font-size: 14px; font-weight: 500;">🖼️ อัปโหลดรูปภาพประกอบ (ถ้ามี):</label><input type="file" accept="image/*" onchange="uploadQuestionImage(this, ${i})" style="background: white; width: 100%;">${imgPreviewHtml}</div>
+                    <div class="edit-row" style="margin-top:10px; align-items:center;">
+                        <select id="edit_type_${i}" onchange="questionTypeChanged(${i})" style="flex:1;">
+                            <option value="section" ${q.type==='section'?'selected':''}>📋 แบ่งหน้า / ส่วนคำชี้แจง</option>
+                            <option value="info" ${q.type==='info'?'selected':''}>💬 กล่องข้อความอธิบาย (ไม่มีช่องกรอก)</option>
+                            <option value="text" ${q.type==='text'?'selected':''}>ข้อความสั้น</option>
+                            <option value="number" ${q.type==='number'?'selected':''}>ตัวเลข (Number)</option>
+                            <option value="date" ${q.type==='date'?'selected':''}>วันที่ (ปฏิทิน)</option>
+                            <option value="dropdown" ${q.type==='dropdown'?'selected':''}>ตัวเลือกเลื่อนลง (Dropdown)</option>
+                            <option value="checkbox" ${q.type==='checkbox'?'selected':''}>เลือกหลายข้อ (Checkbox)</option>
+                            <option value="file" ${q.type==='file'?'selected':''}>อัปโหลดไฟล์รูปภาพ</option>
                         </select>
-                        ${reqDropdownHtml}
-                        <button type="button" class="btn-delete" onclick="deleteQuestion(${index})">🗑️ ลบส่วนนี้</button>
+                        <select id="edit_req_${i}" ${q.type==='section' || q.type==='info' ? 'style="display:none;"':''} style="flex:1;">
+                            <option value="true" ${q.isRequired ? 'selected' : ''}>บังคับตอบ (*)</option>
+                            <option value="false" ${!q.isRequired ? 'selected' : ''}>ไม่บังคับ</option>
+                        </select>
+                        <button type="button" onclick="deleteQuestion(${i})" style="background:#e74c3c; color:#fff; border:none; padding:12px 15px; border-radius:6px; cursor:pointer; font-family: 'Prompt';">🗑️ ลบ</button>
                     </div>
-                    <div class="edit-row full-width">${optionsBuilderHtml}</div>
+                    ${optionsBuilderHtml}
+                    ${validationBuilderHtml}
                 `;
-                formContent.appendChild(groupDiv);
+                content.appendChild(div);
             });
             document.getElementById('adminFormControls').style.display = 'block';
-            document.getElementById('mainContainer').className = 'container edit-mode';
-
         } else {
-            // โหมดผู้ใช้ (User): จัดกลุ่มคำถามเป็นหน้าๆ (Pagination)
-            let pages = [];
-            let currentPageQuestions = [];
-            
-            questionsData.forEach(q => {
-                if (q.type === 'section' && currentPageQuestions.length > 0) {
-                    pages.push(currentPageQuestions);
-                    currentPageQuestions = [];
-                }
-                currentPageQuestions.push(q);
-            });
-            if (currentPageQuestions.length > 0) { pages.push(currentPageQuestions); }
+            let pages = []; let temp = [];
+            questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pages.push(temp); temp=[]; } temp.push(q); });
+            if(temp.length>0) pages.push(temp);
 
-            // วาดหน้าทั้งหมด แต่ซ่อนหน้าที่ไม่ได้เลือกไว้
-            pages.forEach((pageQs, pIndex) => {
-                const pageWrapper = document.createElement('div');
-                pageWrapper.className = 'form-page-wrapper';
-                pageWrapper.id = `form-page-${pIndex}`;
-                pageWrapper.style.display = (pIndex === currentFormPage) ? 'block' : 'none';
+            if(pages.length === 0) { content.innerHTML = '<p style="text-align:center;">ยังไม่มีข้อมูลฟอร์ม</p>'; return; }
 
-                pageQs.forEach(q => {
-                    const groupDiv = document.createElement('div');
-                    groupDiv.className = 'form-group';
+            pages[currentFormPage].forEach((q, idx) => {
+                const div = document.createElement('div'); 
+                div.className = 'form-group';
+                div.style.animationDelay = `${idx * 0.1}s`;
 
-                    if (q.type === 'section') {
-                        let html = `<div class="section-header"><h3>${q.label}</h3>`;
-                        if (q.description) html += `<p>${q.description}</p>`;
-                        html += `</div>`;
-                        if (q.imageUrl) html += `<img src="${q.imageUrl}" class="question-img" style="margin-top: 10px;">`;
-                        groupDiv.innerHTML = html;
-                        groupDiv.style.border = "none"; groupDiv.style.padding = "0"; groupDiv.style.background = "transparent";
-                    } else {
-                        let html = `<label>${q.label} ${q.isRequired ? '<span class="required-star">*</span>' : ''}</label>`;
-                        if (q.description) html += `<div class="question-desc">${q.description}</div>`;
-                        if (q.imageUrl) html += `<img src="${q.imageUrl}" class="question-img">`;
+                let savedValue = formDataDraft[q.id] || "";
 
-                        if (q.type === 'dropdown') {
-                            html += `<select name="${q.id}" ${q.isRequired ? 'required' : ''}><option value="">-- เลือก --</option>${q.options.map(o => `<option value="${o}">${o}</option>`).join('')}</select>`;
-                        } else if (q.type === 'checkbox') {
-                            html += `<div class="checkbox-group">${q.options.map(o => `<label><input type="checkbox" name="${q.id}" value="${o}"> ${o}</label>`).join('')}</div>`;
-                        } else if (q.type === 'file') {
-                            html += `<input type="file" name="${q.id}" accept="image/*,application/pdf" ${q.isRequired ? 'required' : ''}>`;
-                        } else {
-                            html += `<input type="${q.type}" name="${q.id}" ${q.isRequired ? 'required' : ''}>`;
-                        }
-                        groupDiv.innerHTML = html;
+                if(q.type === 'section') {
+                    div.innerHTML = `<div class="section-header"><h3>${q.label}</h3><p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">${q.description.replace(/\n/g, '<br>')}</p></div>`;
+                    if (q.imageUrl) div.innerHTML += `<img src="${q.imageUrl}" class="question-img" style="margin-top: 10px;">`;
+                    div.style.background = 'none'; div.style.border = 'none'; div.style.padding = '0'; div.style.boxShadow = 'none';
+                } 
+                else if (q.type === 'info') {
+                    div.innerHTML = `
+                        <div style="background: #eaf2f8; padding: 15px; border-left: 4px solid #3498db; border-radius: 8px;">
+                            <h4 style="margin: 0 0 8px 0; color: #2980b9; font-size: 16px;">${q.label}</h4>
+                            <p style="margin: 0; font-size: 14px; color: #444; line-height: 1.5;">${q.description.replace(/\n/g, '<br>')}</p>
+                        </div>
+                    `;
+                    if (q.imageUrl) div.innerHTML += `<img src="${q.imageUrl}" class="question-img" style="margin-top: 15px;">`;
+                    div.style.background = 'none'; div.style.border = 'none'; div.style.padding = '0'; div.style.boxShadow = 'none';
+                } 
+                else {
+                    div.innerHTML = `<label>${q.label} ${q.isRequired?'<span class="required-star">*</span>':''}</label><p class="question-desc">${q.description.replace(/\n/g, '<br>')}</p>`;
+                    if (q.imageUrl) div.innerHTML += `<img src="${q.imageUrl}" class="question-img">`;
+
+                    if(q.type === 'dropdown') {
+                        div.innerHTML += `<select name="${q.id}" ${q.isRequired?'required':''}><option value="">-- เลือก --</option>${q.options.map(o=>`<option value="${o}" ${savedValue===o?'selected':''}>${o}</option>`).join('')}</select>`;
                     }
-                    pageWrapper.appendChild(groupDiv);
-                });
-
-                // สร้างปุ่ม ถัดไป / ย้อนกลับ / ส่งใบสมัคร ตามจำนวนหน้า
-                const navDiv = document.createElement('div');
-                navDiv.style.display = 'flex'; navDiv.style.gap = '10px'; navDiv.style.marginTop = '20px';
-
-                if (pIndex > 0) {
-                    navDiv.innerHTML += `<button type="button" class="btn-submit btn-back" onclick="changeFormPage(${pIndex - 1})">⬅️ ย้อนกลับ</button>`;
+                    else if (q.type === 'checkbox') {
+                        let savedArr = savedValue ? savedValue.split(', ') : [];
+                        div.innerHTML += `<div class="checkbox-group">${q.options.map(o => `<label><input type="checkbox" name="${q.id}" value="${o}" style="width:auto; margin-right:10px; transform:scale(1.2);" ${savedArr.includes(o)?'checked':''}> ${o}</label>`).join('')}</div>`;
+                    }
+                    else if (q.type === 'date') {
+                        div.innerHTML += `<input type="date" name="${q.id}" value="${savedValue}" ${q.isRequired?'required':''}>`;
+                    }
+                    else if (q.type === 'number') {
+                        let minAttr = q.min ? `min="${q.min}"` : '';
+                        let maxAttr = q.max ? `max="${q.max}"` : '';
+                        let errAttr = q.customErrorMsg ? `oninvalid="this.setCustomValidity('${q.customErrorMsg}')" oninput="this.setCustomValidity('')"` : '';
+                        div.innerHTML += `<input type="number" name="${q.id}" value="${savedValue}" ${minAttr} ${maxAttr} ${q.isRequired?'required':''} ${errAttr} placeholder="ระบุตัวเลข">`;
+                    }
+                    else if(q.type === 'file') {
+                        // 🌟 ถ้ารูปเคยถูกอัปโหลดขึ้น Cloudinary ไปแล้ว (เป็นลิงก์ http) ก็ไม่ต้องบังคับ required
+                        let reqAttr = (q.isRequired && (!savedValue || !savedValue.includes('http'))) ? 'required' : '';
+                        div.innerHTML += `<input type="file" name="${q.id}" accept="image/*" ${reqAttr} onchange="handleFileSelect(this, '${q.id}')">`;
+                        
+                        let previewContent = "";
+                        if (savedValue && savedValue.includes('http')) {
+                            previewContent = `
+                                <div class="preview-img-container">
+                                    <img src="${savedValue}">
+                                    <div class="preview-badge">✓</div>
+                                </div>
+                            `;
+                        }
+                        div.innerHTML += `<div id="preview_area_${q.id}">${previewContent}</div>`;
+                    }
+                    else {
+                        div.innerHTML += `<input type="text" name="${q.id}" value="${savedValue}" ${q.isRequired?'required':''}>`;
+                    }
                 }
-                
-                if (pIndex < pages.length - 1) {
-                    navDiv.innerHTML += `<button type="button" class="btn-submit" onclick="changeFormPage(${pIndex + 1})">ถัดไป ➡️</button>`;
-                } else {
-                    navDiv.innerHTML += `<button type="button" class="btn-submit" onclick="submitForm()">ส่งใบสมัคร 💾</button>`;
-                }
-
-                pageWrapper.appendChild(navDiv);
-                formContent.appendChild(pageWrapper);
+                content.appendChild(div);
             });
 
-            document.getElementById('adminFormControls').style.display = 'none';
-            document.getElementById('mainContainer').className = 'container';
+            const nav = document.createElement('div'); nav.style.display='flex'; nav.style.gap='15px'; nav.style.marginTop='30px';
+            if(currentFormPage > 0) nav.innerHTML += `<button type="button" class="btn-submit btn-back" onclick="changeFormPage(${currentFormPage - 1})">⬅️ ย้อนกลับ</button>`;
+            if(currentFormPage < pages.length - 1) nav.innerHTML += `<button type="button" class="btn-submit" onclick="changeFormPage(${currentFormPage + 1})">ถัดไป ➡️</button>`;
+            else nav.innerHTML += `<button type="button" class="btn-submit" onclick="submitForm()">ส่งใบสมัครเข้าร่วม 💾</button>`;
+            content.appendChild(nav);
         }
     }
 
-    // ฟังก์ชันเปลี่ยนหน้าฟอร์ม (พร้อมเช็คข้อมูลว่ากรอกครบไหม)
-    function changeFormPage(targetPage) {
-        if (targetPage > currentFormPage) {
-            const currentPageDiv = document.getElementById(`form-page-${currentFormPage}`);
-            const inputs = currentPageDiv.querySelectorAll('input, select, textarea');
-            for (let input of inputs) {
-                if (!input.checkValidity()) {
-                    input.reportValidity(); // เด้งเตือนถ้าลืมกรอก
-                    return; 
-                }
+    // 🌟 บันทึกเฉพาะข้อมูล Text ตัวหนังสือ เพราะรูปอัปโหลดไปเรียบร้อยแล้วตั้งแต่ตอนกดเลือกรูป
+    function saveTextDraftCurrentPage() {
+        let pgs = []; let temp = [];
+        questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
+        if(temp.length>0) pgs.push(temp);
+
+        const currentQuestions = pgs[currentFormPage];
+        
+        for (let q of currentQuestions) {
+            // ข้ามรูปภาพไปเลย เพราะเรา Save ลง Draft ไปเรียบร้อยแล้วตอนฟังก์ชัน handleFileSelect() ทำงาน
+            if (q.type === 'section' || q.type === 'info' || q.type === 'file') continue; 
+            
+            if (q.type === 'checkbox') {
+                const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
+                formDataDraft[q.id] = Array.from(checked).map(cb => cb.value).join(', ');
+            } else {
+                const el = document.querySelector(`[name="${q.id}"]`);
+                if(el) formDataDraft[q.id] = el.value;
             }
         }
-        document.getElementById(`form-page-${currentFormPage}`).style.display = 'none';
-        document.getElementById(`form-page-${targetPage}`).style.display = 'block';
-        currentFormPage = targetPage;
-        window.scrollTo(0, 0); // เลื่อนจอขึ้นบนสุด
+        sessionStorage.setItem('userFormDraft', JSON.stringify(formDataDraft));
+    }
+
+    function changeFormPage(targetPage) {
+        if(targetPage > currentFormPage) {
+            let pgs = []; let temp = [];
+            questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
+            if(temp.length>0) pgs.push(temp);
+
+            const currentQuestions = pgs[currentFormPage];
+            
+            for (let q of currentQuestions) {
+                if (q.type === 'section' || q.type === 'info') continue;
+                
+                if (q.type === 'checkbox' && q.isRequired) {
+                    const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
+                    if (checked.length === 0) {
+                        alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`);
+                        return; 
+                    }
+                } else {
+                    const el = document.querySelector(`[name="${q.id}"]`);
+                    // ถ้าช่องรูปภาพว่างเปล่า แต่ในแบบร่างเรามี URL ที่อัปโหลดไว้แล้ว ก็ปล่อยให้ผ่านไปได้เลย!
+                    if(q.type === 'file' && q.isRequired && (!el || !el.files[0]) && formDataDraft[q.id]) {
+                        continue;
+                    }
+                    if (el && !el.checkValidity()) {
+                        el.reportValidity(); 
+                        return; 
+                    }
+                }
+            }
+            saveTextDraftCurrentPage();
+        }
+        currentFormPage = targetPage; renderForm(); window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function questionTypeChanged(index) {
         saveCurrentInputState();
-        if ((questionsData[index].type === 'dropdown' || questionsData[index].type === 'checkbox') && questionsData[index].options.length === 0) {
-            questionsData[index].options = ["ตัวเลือก 1"];
-        }
+        if ((questionsData[index].type === 'dropdown' || questionsData[index].type === 'checkbox') && questionsData[index].options.length === 0) questionsData[index].options = ["ตัวเลือก 1"];
         renderForm();
     }
     function addOptionBox(qIndex) { saveCurrentInputState(); questionsData[qIndex].options.push(""); renderForm(); }
     function removeOptionBox(qIndex, optIndex) { saveCurrentInputState(); questionsData[qIndex].options.splice(optIndex, 1); renderForm(); }
-    function addNewQuestion() { saveCurrentInputState(); questionsData.push({ id: "q_" + Date.now(), label: "คำถามใหม่", type: "text", description: "", isRequired: false, options: [], imageUrl: "" }); renderForm(); }
+    function addNewQuestion() { 
+        saveCurrentInputState(); 
+        questionsData.push({ 
+            id: "q_" + Date.now(), label: "คำถามใหม่", type: "text", description: "", 
+            isRequired: false, options: [], imageUrl: "", min: "", max: "", customErrorMsg: "" 
+        }); 
+        renderForm(); 
+    }
     function deleteQuestion(index) { if(confirm("ลบทิ้งใช่หรือไม่?")) { questionsData.splice(index, 1); renderForm(); } }
 
     function saveCurrentInputState() {
-        questionsData.forEach((q, index) => {
-            if(document.getElementById(`edit_label_${index}`)) {
-                q.label = document.getElementById(`edit_label_${index}`).value;
-                q.description = document.getElementById(`edit_desc_${index}`).value;
-                q.type = document.getElementById(`edit_type_${index}`).value;
-                if(document.getElementById(`edit_req_${index}`)) {
-                    q.isRequired = document.getElementById(`edit_req_${index}`).value === "true";
-                } else { q.isRequired = false; }
-
-                if (q.type === 'dropdown' || q.type === 'checkbox') {
+        questionsData.forEach((q, i) => {
+            if(document.getElementById(`edit_label_${i}`)) {
+                q.label = document.getElementById(`edit_label_${i}`).value;
+                q.description = document.getElementById(`edit_desc_${i}`).value;
+                q.type = document.getElementById(`edit_type_${i}`).value;
+                if(document.getElementById(`edit_req_${i}`)) q.isRequired = document.getElementById(`edit_req_${i}`).value === "true";
+                
+                if(q.type === 'dropdown' || q.type === 'checkbox') {
                     let newOptions = []; let optIndex = 0;
-                    while(document.getElementById(`edit_opt_${index}_${optIndex}`) !== null) {
-                        let optVal = document.getElementById(`edit_opt_${index}_${optIndex}`).value.trim();
+                    while(document.getElementById(`edit_opt_${i}_${optIndex}`) !== null) {
+                        let optVal = document.getElementById(`edit_opt_${i}_${optIndex}`).value.trim();
                         if(optVal !== "") newOptions.push(optVal);
                         optIndex++;
                     }
                     q.options = newOptions;
-                } else { q.options = []; }
+                }
+                
+                if(q.type === 'number') {
+                    let editMin = document.getElementById(`edit_min_${i}`);
+                    let editMax = document.getElementById(`edit_max_${i}`);
+                    let editErr = document.getElementById(`edit_err_${i}`);
+                    if(editMin) q.min = editMin.value;
+                    if(editMax) q.max = editMax.value;
+                    if(editErr) q.customErrorMsg = editErr.value;
+                }
             }
         });
     }
 
-    function saveAdminChanges() { saveCurrentInputState(); applyTheme(); alert("บันทึกโครงสร้างฟอร์มเรียบร้อย!"); renderForm(); }
-
-    // --- 5. ระบบจัดการ Users ---
-    function renderAdminUsersTable() {
-        const tbody = document.getElementById('adminUsersTable');
-        tbody.innerHTML = '';
-        adminUsers.forEach((user, index) => {
-            const delBtn = (user.username === document.getElementById('loginUser').value) 
-                ? `<span style="color:gray;">(คุณ)</span>` 
-                : `<button class="btn-remove-opt" onclick="deleteAdminUser(${index})">ลบ</button>`;
-            tbody.innerHTML += `<tr><td>${user.username}</td><td>${user.password}</td><td>${user.role}</td><td>${delBtn}</td></tr>`;
-        });
+    async function saveAdminChanges() {
+        saveCurrentInputState();
+        const btn = document.getElementById('saveFormBtn'); 
+        btn.disabled = true; btn.innerHTML = "กำลังบันทึกโครงสร้าง... ⏳";
+        try {
+            await db.collection("settings").doc("form").set({ questions: questionsData });
+            alert("✅ บันทึกโครงสร้างฟอร์มสำเร็จ!"); 
+        } catch (error) { alert("❌ บันทึกไม่สำเร็จ: " + error.message); }
+        btn.disabled = false; btn.innerHTML = "💾 บันทึกโครงสร้างฟอร์ม";
     }
 
-    function addAdminUser() {
+    function renderAdminUsersTable() {
+        const tbody = document.getElementById('adminUsersTable'); tbody.innerHTML = '';
+        adminUsers.forEach((user, index) => {
+            const delBtn = (user.username === document.getElementById('loginUser').value) ? `<span style="color:gray;">(คุณ)</span>` : `<button onclick="deleteAdminUser(${index})" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">ลบ</button>`;
+            tbody.innerHTML += `<tr><td>${user.username}</td><td>***</td><td>${user.role}</td><td>${delBtn}</td></tr>`;
+        });
+    }
+    async function addAdminUser() {
         if(currentUserRole !== "Super Admin") { alert("เฉพาะ Super Admin เท่านั้นที่เพิ่มผู้ใช้ได้"); return; }
         const u = document.getElementById('newAdminUser').value.trim(); const p = document.getElementById('newAdminPass').value.trim();
         const r = document.getElementById('newAdminRole').value;
-        if(u && p) { adminUsers.push({ username: u, password: p, role: r }); document.getElementById('newAdminUser').value = ''; document.getElementById('newAdminPass').value = ''; renderAdminUsersTable(); alert("เพิ่มผู้ใช้สำเร็จ");
+        if(u && p) { 
+            adminUsers.push({ username: u, password: p, role: r }); 
+            await db.collection("settings").doc("admins").set({ users: adminUsers });
+            document.getElementById('newAdminUser').value = ''; document.getElementById('newAdminPass').value = ''; 
+            renderAdminUsersTable(); alert("เพิ่มผู้ใช้สำเร็จ");
         } else { alert("กรุณากรอกข้อมูลให้ครบ"); }
     }
-    function deleteAdminUser(index) {
+    async function deleteAdminUser(index) {
         if(currentUserRole !== "Super Admin") return;
-        if(confirm("ยืนยันการลบผู้ใช้งาน?")) { adminUsers.splice(index, 1); renderAdminUsersTable(); }
-    }
-
-    // ฟังก์ชันแปลงไฟล์เป็น Base64 (เพื่อเซฟรูปลงในฐานข้อมูล)
-    function getBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // --- 6. ระบบส่งข้อมูล & สถิติ & ลบข้อมูลใบสมัคร ---
-    async function submitForm() {
-        const currentPageDiv = document.getElementById(`form-page-${currentFormPage}`);
-        if(currentPageDiv) {
-            const inputs = currentPageDiv.querySelectorAll('input, select, textarea');
-            for (let input of inputs) { if (!input.checkValidity()) { input.reportValidity(); return; } }
+        if(confirm("ยืนยันการลบผู้ใช้งาน?")) { 
+            adminUsers.splice(index, 1); 
+            await db.collection("settings").doc("admins").set({ users: adminUsers });
+            renderAdminUsersTable(); 
         }
-        
-        document.getElementById('submitBtn').disabled = true;
-        document.getElementById('submitBtn').innerHTML = "กำลังบันทึกข้อมูล... ⏳";
+    }
 
-        let formData = {};
-        for (let q of questionsData) {
-            if(q.type === 'section') continue; 
+    // 🌟 ระบบส่งข้อมูลก้อนสุดท้าย (พริบตาเดียวเสร็จ เพราะไม่ต้องส่งรูปแล้ว)
+    async function submitForm() {
+        let pgs = []; let temp = [];
+        questionsData.forEach(q => { if(q.type==='section' && temp.length>0) { pgs.push(temp); temp=[]; } temp.push(q); });
+        if(temp.length>0) pgs.push(temp);
+
+        const currentQuestions = pgs[currentFormPage];
+        for (let q of currentQuestions) {
+            if (q.type === 'section' || q.type === 'info') continue;
             
-            if(q.type === 'checkbox') {
+            if (q.type === 'checkbox' && q.isRequired) {
                 const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
-                formData[q.id] = Array.from(checked).map(cb => cb.value).join(', ');
-            } else if (q.type === 'file') {
-                const fileInput = document.querySelector(`input[name="${q.id}"]`);
-                if (fileInput && fileInput.files.length > 0) {
-                    // แปลงไฟล์ภาพที่อัปโหลดเป็น Base64
-                    formData[q.id] = await getBase64(fileInput.files[0]);
-                } else {
-                    formData[q.id] = "-";
+                if (checked.length === 0) {
+                    alert(`กรุณาเลือกอย่างน้อย 1 รายการ ในข้อ: ${q.label}`);
+                    return;
                 }
             } else {
-                const inputEl = document.querySelector(`[name="${q.id}"]`);
-                if(inputEl) formData[q.id] = inputEl.value;
+                const el = document.querySelector(`[name="${q.id}"]`);
+                if(q.type === 'file' && q.isRequired && (!el || !el.files[0]) && formDataDraft[q.id]) {
+                    continue; 
+                }
+                if (el && !el.checkValidity()) {
+                    el.reportValidity();
+                    return;
+                }
             }
         }
 
-        const now = new Date();
-        const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-        submissions.push({ id: Date.now(), timestamp: timeStr, answers: formData });
+        // เซฟข้อความหน้าสุดท้าย
+        saveTextDraftCurrentPage();
+
+        const btn = event.target; btn.disabled = true; btn.innerHTML = "กำลังส่งใบสมัคร... ⏳";
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        document.getElementById('loadingText').innerText = "กำลังบันทึกข้อมูล กรุณารอสักครู่...";
+
+        try {
+            let finalAnswers = {};
+            for(let q of questionsData) {
+                if(q.type === 'section' || q.type === 'info') continue;
+                
+                // ดึงข้อมูลทั้งหมด รวมถึง URL รูปภาพที่เคยอัปโหลดไว้ มาส่งได้เลยทันที
+                finalAnswers[q.id] = formDataDraft[q.id] || "-"; 
+            }
+            
+            const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+            const appId = "SK-" + randomStr;
+            const timestamp = new Date().toLocaleString('th-TH');
+
+            // ใช้เวลาส่งขึ้น Firebase ไม่เกิน 1 วินาที เพราะเป็นตัวหนังสือล้วนๆ
+            await db.collection("submissions").doc(appId).set({ 
+                appId: appId,
+                timestamp: timestamp, 
+                answers: finalAnswers 
+            });
+            
+            // ส่งเสร็จก็ล้าง Draft ทิ้ง
+            sessionStorage.removeItem('userFormDraft');
+            formDataDraft = {};
+
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('formContainerBlock').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            document.getElementById('successAppId').innerText = appId;
+            
+            document.getElementById('downloadPdfBtn').onclick = () => window.open('print.html?id=' + appId, '_blank');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        } catch (error) {
+            console.error(error);
+            alert("❌ เกิดข้อผิดพลาดตอนส่งข้อมูล: " + error);
+            btn.disabled = false; btn.innerHTML = "ส่งใบสมัคร 💾";
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    }
+
+    async function searchApp() {
+        let inputId = document.getElementById('searchAppIdInput').value.trim().toUpperCase();
+        const resDiv = document.getElementById('searchResult');
         
-        alert("ส่งใบสมัครเรียบร้อยแล้ว!");
-        document.getElementById('dynamicForm').reset(); 
-        currentFormPage = 0; 
-        renderForm(); // รีเฟรชกลับไปหน้าแรก
+        if(!inputId) { resDiv.innerHTML = '<span style="color:red;">กรุณากรอกรหัสใบสมัคร</span>'; return; }
+        
+        resDiv.innerHTML = "กำลังค้นหาข้อมูลในระบบ... ⏳";
+        try {
+            let doc = await db.collection("submissions").doc(inputId).get();
+            if(doc.exists) {
+                window.tempSearchData = doc.data();
+                resDiv.innerHTML = `
+                    <div style="background:#e8f8f5; padding:15px; border-radius:8px; border:1px solid #1abc9c; margin-top:10px;">
+                        <h4 style="margin:0 0 5px 0; color:#16a085;">✅ พบข้อมูลใบสมัคร!</h4>
+                        <p style="margin:0; font-size:13px; color:#555;">วันที่สมัคร: ${window.tempSearchData.timestamp}</p>
+                        <button onclick="window.open('print.html?id=${inputId}', '_blank')" class="btn-submit" style="padding:10px; font-size:14px; background:linear-gradient(135deg, #e67e22, #d35400); margin-top: 10px;">🖨️ พิมพ์ใบสมัคร / Save PDF</button>
+                    </div>
+                `;
+            } else {
+                resDiv.innerHTML = `<p style="color:#e74c3c; background:#fdedec; padding:10px; border-radius:6px; text-align:center;">❌ ไม่พบข้อมูลรหัส ${inputId} ในระบบ</p>`;
+            }
+        } catch(e) { resDiv.innerHTML = "เกิดข้อผิดพลาด: " + e.message; }
+    }
+
+    function exportToCSV() {
+        if (submissions.length === 0) {
+            alert("ยังไม่มีข้อมูลผู้สมัครให้ Export ครับ"); return;
+        }
+
+        let csvContent = "รหัสผู้สมัคร,วันที่สมัคร,";
+        let questionKeys = []; 
+        
+        questionsData.forEach(q => {
+            if (q.type !== 'section' && q.type !== 'info') {
+                csvContent += `"${q.label}",`;
+                questionKeys.push(q.id);
+            }
+        });
+        csvContent += "\n";
+
+        submissions.forEach(sub => {
+            csvContent += `"${sub.appId}","${sub.timestamp}",`;
+            questionKeys.forEach(key => {
+                let ans = sub.answers[key] || "-";
+                ans = ans.replace(/"/g, '""'); 
+                csvContent += `"${ans}",`;
+            });
+            csvContent += "\n";
+        });
+
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", `ข้อมูลรับสมัคร_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    async function deleteAllSubmissions() {
+        if(currentUserRole !== "Super Admin") { 
+            alert("เฉพาะ Super Admin เท่านั้นที่ล้างข้อมูลทั้งหมดได้"); return; 
+        }
+        if (submissions.length === 0) {
+            alert("ตอนนี้ยังไม่มีข้อมูลผู้สมัครครับ"); return;
+        }
+
+        const confirmText = prompt("⚠️ คำเตือน: การกระทำนี้จะลบข้อมูลผู้สมัครทั้งหมดอย่างถาวร!\n\nพิมพ์คำว่า 'ยืนยัน' ด้านล่างเพื่อดำเนินการต่อ:");
+        
+        if (confirmText === "ยืนยัน") {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "กำลังล้างข้อมูลทั้งหมด กรุณารอสักครู่...";
+            
+            try {
+                const snapshot = await db.collection("submissions").get();
+                const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
+                await Promise.all(deletePromises);
+                
+                document.getElementById('loadingOverlay').style.display = 'none';
+                alert("✅ ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว!");
+                loadSubmissionsAndRender('summary'); 
+            } catch (error) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                alert("❌ เกิดข้อผิดพลาดในการลบ: " + error.message);
+            }
+        } else if (confirmText !== null) {
+            alert("ยกเลิกการลบข้อมูล (คุณพิมพ์คำว่า 'ยืนยัน' ไม่ถูกต้อง)");
+        }
     }
 
     function renderStatsView(mode) {
         const area = document.getElementById('statsContentArea');
-        area.innerHTML = '';
-
-        if(submissions.length === 0) {
-            area.innerHTML = '<p style="text-align:center; color:#777;">ยังไม่มีผู้ส่งข้อมูล</p>'; return;
-        }
+        if(submissions.length === 0) { area.innerHTML = "<div style='text-align:center; padding:30px; background:#fff; border-radius:12px;'>ยังไม่มีข้อมูลผู้สมัคร</div>"; return; }
 
         if(mode === 'summary') {
-            area.innerHTML = `<div class="stat-card"><h3>👥 จำนวนผู้สมัครทั้งหมด: <span style="color:var(--primary-color)">${submissions.length}</span> คน</h3></div>`;
+            area.innerHTML = `<div style="background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.02); margin-bottom:15px; border-left: 5px solid var(--primary-color);"><h3>👥 จำนวนผู้สมัครทั้งหมด: <span style="color:var(--primary-color); font-size:28px;">${submissions.length}</span> คน</h3></div>`;
             questionsData.forEach(q => {
                 if(q.type === 'dropdown' || q.type === 'checkbox') {
                     let counts = {};
-                    submissions.forEach(sub => {
-                        let ans = sub.answers[q.id];
-                        if(ans) { counts[ans] = (counts[ans] || 0) + 1; }
+                    submissions.forEach(sub => { 
+                        let ans = sub.answers[q.id]; 
+                        if(ans) { ans.split(', ').forEach(a => { counts[a] = (counts[a] || 0) + 1; }); }
                     });
                     
-                    let statHtml = `<div class="stat-card"><h4>คำถาม: ${q.label}</h4>`;
+                    let statHtml = `<div style="background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.02); margin-bottom:15px; border:1px solid #eee;"><h4 style="margin-top:0;">สถิติ: ${q.label}</h4>`;
                     for(let option in counts) {
                         let pct = Math.round((counts[option] / submissions.length) * 100);
-                        statHtml += `<div style="margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:14px;"><span>${option}</span><span>${counts[option]} คน (${pct}%)</span></div><div class="stat-bar" style="width:${pct}%"></div></div>`;
+                        statHtml += `<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px;"><span>${option}</span><span style="font-weight:bold; color:var(--primary-color);">${counts[option]} คน (${pct}%)</span></div><div style="background:#f1f2f6; height:12px; border-radius:6px; overflow:hidden;"><div style="background:linear-gradient(90deg, var(--primary-color), #9b59b6); height:100%; width:${pct}%; border-radius:6px; transition:width 1s;"></div></div></div>`;
                     }
-                    statHtml += `</div>`;
-                    area.innerHTML += statHtml;
+                    statHtml += `</div>`; area.innerHTML += statHtml;
                 }
             });
         } 
         else if (mode === 'individual') {
-            let selectHtml = `<select id="individualSelect" onchange="showIndividualData(this.value)" style="margin-bottom:15px; padding:10px; width:100%; font-family:'Prompt';"><option value="">-- เลือกผู้สมัคร --</option>`;
-            submissions.forEach((sub, i) => { selectHtml += `<option value="${i}">คนที่ ${i+1} (ส่งเมื่อ ${sub.timestamp})</option>`; });
-            selectHtml += `</select><div id="individualDetails" class="stat-card" style="display:none;"></div>`;
+            let selectHtml = `<select id="individualSelect" onchange="showIndividualData(this.value)" style="margin-bottom:15px; padding:12px; width:100%; font-family:'Prompt'; border-radius:8px;"><option value="">-- เลือกผู้สมัคร --</option>`;
+            submissions.forEach((sub, i) => { selectHtml += `<option value="${i}">รหัส ${sub.appId} - (ส่งเมื่อ ${sub.timestamp})</option>`; });
+            selectHtml += `</select><div id="individualDetails" style="background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.03); display:none;"></div>`;
             area.innerHTML = selectHtml;
         }
     }
 
-    function showIndividualData(index) {
+    function showIndividualData(i) {
         const details = document.getElementById('individualDetails');
-        if(index === "") { details.style.display = 'none'; return; }
+        if(i === "") { details.style.display = 'none'; return; }
         
-        const sub = submissions[index];
-        let html = `<h4>ข้อมูลผู้สมัครคนที่ ${parseInt(index)+1}</h4><hr style="border:0; border-top:1px solid #ddd; margin-bottom:15px;">`;
+        let s = submissions[i];
+        
+        let html = `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px dashed #eee; padding-bottom:15px; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin:0; color:var(--primary-color);">ข้อมูลรหัส: ${s.appId}</h3>
+                <button onclick="window.open('print.html?id=${s.appId}', '_blank')" style="background:linear-gradient(135deg, #e67e22, #d35400); color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; font-family:'Prompt'; box-shadow:0 4px 10px rgba(230,126,34,0.3);">🖨️ พิมพ์ / Save PDF</button>
+            </div>
+        `;
         
         questionsData.forEach(q => {
-            if(q.type === 'section') return; 
-            let ans = sub.answers[q.id] || '<span style="color:gray">- ไม่ได้ตอบ -</span>';
+            if(q.type==='section' || q.type === 'info') return;
             
-            // เช็คว่าถ้าคำตอบเป็นโค้ดรูปภาพ (Base64) ให้แสดงรูปขึ้นมาเลย
-            if (ans.toString().startsWith('data:image/')) {
-                ans = `
-                    <br><img src="${ans}" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px;">
-                    <br><a href="${ans}" download="photo_submission_${index}.png" style="display:inline-block; margin-top:5px; font-size:13px; color:var(--primary-color); font-weight:bold; text-decoration:none;">⬇️ ดาวน์โหลดรูปภาพนี้</a>
-                `;
+            let val = s.answers[q.id] || "-";
+            if(val.includes('i.ibb.co') || val.includes('res.cloudinary.com') || val.includes('http')) {
+                let previewUrl = val;
+                if(val.includes('res.cloudinary.com/')) {
+                    previewUrl = val.replace('/upload/', '/upload/w_300/');
+                }
+                
+                html += `<div style="margin-bottom:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><strong>${q.label}:</strong><br>
+                <img loading="lazy" src="${previewUrl}" style="max-height:200px; border-radius:8px; margin-top:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);"><br>
+                <a href="${val}" target="_blank" style="display:inline-block; margin-top:10px; font-size:13px; font-weight:bold; color:var(--primary-color); text-decoration:none;">🔗 เปิดดูรูปเต็ม</a></div>`;
+            } else {
+                html += `<div style="margin-bottom:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><strong>${q.label}:</strong> <span style="color:#2980b9; font-weight:500;">${val}</span></div>`;
             }
-
-            html += `<div style="margin-bottom:15px; background:#fff; padding:10px; border-radius:6px; border:1px solid #eee;"><strong>${q.label}:</strong><br><span style="color:#2980b9;">${ans}</span></div>`;
         });
         
-        html += `<hr style="border:0; border-top:1px solid #ddd; margin-top:20px; margin-bottom:15px;">
-                 <button class="btn-delete" style="width: 100%;" onclick="deleteSubmission(${index})">🗑️ ลบข้อมูลใบสมัครของคนนี้</button>`;
+        html += `<button onclick="deleteSubmission(${i})" style="margin-top:20px; background:#e74c3c; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; width:100%; font-family:'Prompt'; font-size:14px;">🗑️ ลบข้อมูลรายการนี้</button>`;
         details.innerHTML = html;
         details.style.display = 'block';
     }
 
-    function deleteSubmission(index) {
+    async function deleteSubmission(i) {
         if(currentUserRole !== "Super Admin") { alert("เฉพาะ Super Admin เท่านั้นที่ลบใบสมัครได้"); return; }
-        if(confirm("คำเตือน: ยืนยันการลบข้อมูลใบสมัครนี้อย่างถาวรใช่หรือไม่?")) {
-            submissions.splice(index, 1); alert("ลบข้อมูลสำเร็จ"); renderStatsView('individual');
+        if(confirm(`ยืนยันการลบข้อมูลรหัส ${submissions[i].appId} ใช่หรือไม่?`)) {
+            try {
+                await db.collection('submissions').doc(submissions[i].appId).delete();
+                alert('ลบข้อมูลเรียบร้อย!'); 
+                loadSubmissionsAndRender('individual');
+            } catch(e) { alert("ลบไม่สำเร็จ: " + e.message); }
         }
     }
 
-    applyTheme();
-    renderForm();
+    function clearDraftAndReload() {
+        sessionStorage.removeItem('userFormDraft');
+        location.reload();
+    }
+
+    loadInitialData();
+
 </script>
 </body>
 </html>

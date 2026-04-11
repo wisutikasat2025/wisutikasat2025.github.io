@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบประมวลผลคะแนน - แอดมิน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; background: #ecf0f1; padding: 20px; color: #333; margin:0;}
+        .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 12px; border: none; background: #f8f9fa; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-weight: bold; transition: 0.3s; flex:1; font-size:13px; text-align:center;}
+        .tab-btn.active { background: #2980b9; color: white; box-shadow: 0 4px 10px rgba(41, 128, 185, 0.3); }
+        
+        .panel { display: none; animation: fadeIn 0.3s; }
+        .panel.active { display: block; }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+        .control-box { background: #fdfdfd; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        label { font-weight: bold; margin-bottom: 5px; display: block; color: #2c3e50; }
+        input, select, textarea { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; font-family: 'Prompt'; margin-bottom: 15px; box-sizing: border-box; }
+        
+        .btn { padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; font-family: 'Prompt'; font-weight: bold; cursor: pointer; color: white; background: #27ae60; transition:0.2s;}
+        .btn:hover { filter: brightness(0.9); }
+        .btn-export { background: #e74c3c; width:auto; font-size:14px; padding:10px 15px;}
+        .btn-export-csv { background: #16a085; width:auto; font-size:14px; padding:10px 15px;}
+        .btn-reset { background: #fff; color: #e74c3c; border: 2px solid #e74c3c; padding: 8px 15px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 15px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: middle; }
+        th { background: #f0f0f0; color: #333; position: sticky; top: 0; }
+        
+        .rank-1 { background: #f1c40f !important; font-weight: bold; }
+        .rank-2 { background: #bdc3c7 !important; font-weight: bold; }
+        .rank-3 { background: #e67e22 !important; font-weight: bold; color: white; }
+
+        .chart-container { width: 100%; height: 350px; margin-top: 20px; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;}
+        .judge-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>💻 ระบบประมวลผลคะแนนและจัดการประกวด</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-settings')">⚙️ เปิดโหวต / ล้างข้อมูล</button>
+        <button class="tab-btn" onclick="switchTab('tab-judges')">👥 กรรมการ</button>
+        <button class="tab-btn" onclick="switchTab('tab-roster')" style="background:#e67e22; color:white;">📋 จัดการรายชื่อผู้ประกวด</button>
+        <button class="tab-btn" onclick="switchTab('tab-r1')">📊 ผลรอบ 1</button>
+        <button class="tab-btn" onclick="switchTab('tab-r2')">📊 ผลรอบ 2</button>
+        <button class="tab-btn" onclick="switchTab('tab-r3')">👑 รอบตัดสิน</button>
+    </div>
+
+    <div id="tab-settings" class="panel active">
+        <div class="control-box">
+            <h3 style="color:#2980b9; margin-top:0;">🛑 สัญญาณเปิดให้กรรมการโหวต</h3>
+            
+            <label>ตั้งค่าเปิดโหวตในรอบปัจจุบัน:</label>
+            <select id="configRound">
+                <option value="1">รอบที่ 1</option>
+                <option value="2">รอบที่ 2</option>
+                <option value="3">รอบตัดสินสุดท้าย</option>
+            </select>
+            
+            <label>ชื่อรอบ (แสดงบนหน้าจอกรรมการ):</label>
+            <input type="text" id="configName" value="รอบคัดเลือกที่ 1">
+
+            <label>บังคับกรรมการต้องเลือก (คน):</label>
+            <input type="number" id="configLimit" value="20" placeholder="เช่น 10">
+
+            <label>ตำแหน่งรางวัล (เฉพาะรอบตัดสิน) *คั่นด้วยลูกน้ำ (,):</label>
+            <textarea id="configTitles" rows="3">รางวัลชนะเลิศ, รางวัลรองชนะเลิศอันดับที่ 1, รางวัลรองชนะเลิศอันดับที่ 2, รางวัลแต่งกายงาม, ขวัญใจชาววิสุทธิกษัตริย์, ขวัญใจช่างภาพ</textarea>
+
+            <button class="btn" style="width:100%; padding:15px; font-size:18px;" onclick="saveConfig()">📡 บันทึกและส่งสัญญาณไปที่จอกรรมการ</button>
+        </div>
+
+        <div class="control-box" style="border: 2px dashed #e74c3c;">
+            <h3 style="color:#e74c3c; margin-top:0;">⚠️ ระบบล้างข้อมูลคะแนน (Reset Data)</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn-reset" onclick="resetScoresForRound(1)">🗑️ ล้างคะแนน รอบที่ 1</button>
+                <button class="btn-reset" onclick="resetScoresForRound(2)">🗑️ ล้างคะแนน รอบที่ 2</button>
+                <button class="btn-reset" onclick="resetScoresForRound(3)">🗑️ ล้างคะแนน รอบตัดสิน</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-judges" class="panel">
+        <div class="control-box">
+            <h3 style="margin-top:0; color:#2980b9;">รายชื่อกรรมการ</h3>
+            <div class="judge-row">
+                <input type="text" id="newJudgeName" placeholder="พิมพ์ชื่อกรรมการ" style="margin-bottom:0; flex:1;" onkeypress="if(event.key === 'Enter') addJudge()">
+                <button class="btn" style="margin-bottom:0;" onclick="addJudge()">➕ เพิ่มชื่อ</button>
+            </div>
+            <table style="margin-top:20px;">
+                <thead><tr><th style="width:10%; text-align:center;">ลำดับ</th><th>ชื่อกรรมการ</th><th style="width:15%; text-align:center;">จัดการ</th></tr></thead>
+                <tbody id="judgesTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-roster" class="panel">
+        <div class="control-box">
+            <h3 style="margin-top:0; color:#e67e22;">📋 จัดการรายชื่อผู้เข้าประกวดในแต่ละรอบ</h3>
+            <p style="font-size:14px; color:#555;">เลือกรอบ และติ๊กหน้ารายชื่อที่ต้องการให้ไปโผล่ในหน้าจอกรรมการ</p>
+            
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:15px;">
+                <select id="rosterRoundSelect" style="flex:1; margin-bottom:0;" onchange="loadRosterList()">
+                    <option value="1">จัดการรายชื่อ "รอบที่ 1"</option>
+                    <option value="2">จัดการรายชื่อ "รอบที่ 2"</option>
+                    <option value="3">จัดการรายชื่อ "รอบตัดสิน"</option>
+                </select>
+                <button class="btn" style="background:#3498db; padding:12px;" onclick="selectAllRoster()">☑️ ติ๊กทั้งหมด</button>
+                <button class="btn" style="background:#95a5a6; padding:12px;" onclick="clearAllRoster()">ล้างการติ๊ก</button>
+            </div>
+
+            <div style="max-height:400px; overflow-y:auto; border:1px solid #ddd; border-radius:8px;">
+                <table>
+                    <thead><tr><th style="width:10%; text-align:center;">เลือก</th><th style="width:20%; text-align:center;">หมายเลข</th><th>ชื่อ-นามสกุล</th></tr></thead>
+                    <tbody id="rosterTableBody"></tbody>
+                </table>
+            </div>
+            
+            <button class="btn" style="width:100%; padding:15px; font-size:18px; margin-top:20px; background:#e67e22;" onclick="saveRoster()">💾 บันทึกรายชื่อสำหรับรอบนี้</button>
+        </div>
+    </div>
+
+    <div id="tab-r1" class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <h2 style="margin:0; color:#2980b9;">สรุปผลคะแนน รอบที่ 1</h2>
+            <div>
+                <button class="btn" style="background:#3498db; width:auto; font-size:14px; padding:10px 15px;" onclick="loadScoresForRound(1, 'tbodyR1', 'chartR1')">🔄 โหลดข้อมูลใหม่</button>
+                <button class="btn btn-export-csv" onclick="exportScoreCSV(1)">📊 โหลด CSV</button>
+                <button class="btn btn-export" onclick="exportPDF('printR1', 'สรุปคะแนนรอบ1')">🖨️ โหลด PDF</button>
+            </div>
+        </div>
+        
+        <div id="printR1" style="background:white; padding:10px; margin-top:10px;">
+            <div class="chart-container"><canvas id="chartR1"></canvas></div>
+            <table id="tableR1">
+                <thead><tr><th style="text-align:center;">อันดับ</th><th>หมายเลข</th><th>ชื่อ-นามสกุล</th><th style="text-align:center;">คะแนนเสียง</th></tr></thead>
+                <tbody id="tbodyR1"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-r2" class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <h2 style="margin:0; color:#2980b9;">สรุปผลคะแนน รอบที่ 2</h2>
+            <div>
+                <button class="btn" style="background:#3498db; width:auto; font-size:14px; padding:10px 15px;" onclick="loadScoresForRound(2, 'tbodyR2', 'chartR2')">🔄 โหลดข้อมูลใหม่</button>
+                <button class="btn btn-export-csv" onclick="exportScoreCSV(2)">📊 โหลด CSV</button>
+                <button class="btn btn-export" onclick="exportPDF('printR2', 'สรุปคะแนนรอบ2')">🖨️ โหลด PDF</button>
+            </div>
+        </div>
+        
+        <div id="printR2" style="background:white; padding:10px; margin-top:10px;">
+            <div class="chart-container"><canvas id="chartR2"></canvas></div>
+            <table id="tableR2">
+                <thead><tr><th style="text-align:center;">อันดับ</th><th>หมายเลข</th><th>ชื่อ-นามสกุล</th><th style="text-align:center;">คะแนนเสียง</th></tr></thead>
+                <tbody id="tbodyR2"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-r3" class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+            <h2 style="margin:0; color:#8e44ad;">👑 สรุปรอบตัดสินสุดท้าย</h2>
+            <div>
+                <button class="btn" style="background:#3498db; width:auto; font-size:14px; padding:10px 15px;" onclick="loadRound3Scores()">🔄 โหลดข้อมูลใหม่</button>
+                <button class="btn btn-export-csv" onclick="exportRound3CSV()">📊 โหลด CSV</button>
+                <button class="btn btn-export" onclick="exportPDF('printR3', 'สรุปรอบตัดสิน')">🖨️ โหลด PDF</button>
+            </div>
+        </div>
+        <div id="printR3" style="background:white; padding:20px; border:1px solid #eee; border-radius:8px;">
+            <div id="r3_results"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4VAfcbDDrDjOZVAIV3cYCcVa2F0re6j8",
+        authDomain: "register-wisutikasat.firebaseapp.com",
+        projectId: "register-wisutikasat",
+        messagingSenderId: "572965765143",
+        appId: "1:572965765143:web:534acca9ea1a54ff939c52"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let allSubmissions = []; // เฉพาะคนที่มารายงานตัว
+    let questionsConfig = [];
+    let judgesData = [];
+    let rosterData = { r1: [], r2: [], r3: [] }; 
+    
+    let chartInstanceR1 = null;
+    let chartInstanceR2 = null;
+
+    let cachedRankingR1 = [];
+    let cachedRankingR2 = [];
+    let cachedRankingR3 = {};
+
+    async function loadData() {
+        const formDoc = await db.collection("settings").doc("form").get();
+        if (formDoc.exists) questionsConfig = formDoc.data().questions || [];
+
+        const snap = await db.collection("submissions").get();
+        allSubmissions = [];
+        snap.docs.forEach(doc => {
+            let data = doc.data();
+            if (data.checkinData && data.checkinData.status === true) {
+                allSubmissions.push(data);
+            }
+        });
+        allSubmissions.sort((a,b) => a.checkinData.contestNumber.localeCompare(b.checkinData.contestNumber, undefined, {numeric: true}));
+        
+        const confSnap = await db.collection("settings").doc("scoring_config").get();
+        if(confSnap.exists) {
+            let d = confSnap.data();
+            document.getElementById('configRound').value = d.currentRound;
+            document.getElementById('configName').value = d.roundName;
+            document.getElementById('configLimit').value = d.limit;
+            document.getElementById('configTitles').value = d.titles.join(', ');
+        }
+
+        const rosterSnap = await db.collection("settings").doc("roster").get();
+        if(rosterSnap.exists) rosterData = Object.assign({ r1:[], r2:[], r3:[] }, rosterSnap.data());
+
+        loadJudges();
+    }
+
+    function extractName(answersObj) {
+        for (let q of questionsConfig) {
+            if (q.label.toLowerCase().includes('ชื่อ') || q.label.toLowerCase().includes('name')) {
+                if (answersObj[q.id] && answersObj[q.id] !== "-") return answersObj[q.id];
+            }
+        }
+        for (let key in answersObj) {
+            let val = answersObj[key];
+            if (typeof val === 'string' && val.length > 2 && !val.includes('http') && !val.startsWith('data:image')) return val;
+        }
+        return "ผู้สมัคร";
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+        
+        if (tabId === 'tab-roster') loadRosterList();
+        if (tabId === 'tab-r1') loadScoresForRound(1, 'tbodyR1', 'chartR1');
+        if (tabId === 'tab-r2') loadScoresForRound(2, 'tbodyR2', 'chartR2');
+        if (tabId === 'tab-r3') loadRound3Scores();
+    }
+
+    async function saveConfig() {
+        const r = parseInt(document.getElementById('configRound').value);
+        const name = document.getElementById('configName').value.trim();
+        const limit = parseInt(document.getElementById('configLimit').value);
+        const titles = document.getElementById('configTitles').value.split(',').map(t=>t.trim()).filter(t=>t!=="");
+
+        await db.collection("settings").doc("scoring_config").set({
+            currentRound: r, roundName: name, limit: limit, titles: titles
+        });
+        alert(`✅ ส่งสัญญาณให้หน้าจอกรรมการเป็น [รอบที่ ${r}] เรียบร้อยแล้ว!`);
+    }
+
+    async function resetScoresForRound(roundNum) {
+        if(!confirm(`⚠️ คำเตือน: ยืนยันการล้างผลคะแนนโหวตของ "รอบที่ ${roundNum}" ใช่หรือไม่?`)) return;
+        const confirmText = prompt(`พิมพ์เลข ${roundNum} เพื่อยืนยัน:`);
+        if (confirmText === roundNum.toString()) {
+            try {
+                const snapshot = await db.collection("scores").where("round", "==", roundNum).get();
+                const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
+                await Promise.all(deletePromises);
+                alert(`✅ ล้างข้อมูลคะแนน "รอบที่ ${roundNum}" สำเร็จ`);
+            } catch(e) { alert("Error: " + e.message); }
+        }
+    }
+
+    // --- จัดการรายชื่อ (Roster) ---
+    async function loadRosterList() {
+        const roundSel = document.getElementById('rosterRoundSelect').value;
+        
+        // ดึง Roster สดๆ ป้องกันบั๊ก
+        const rosSnap = await db.collection("settings").doc("roster").get();
+        if(rosSnap.exists) rosterData = Object.assign({ r1:[], r2:[], r3:[] }, rosSnap.data());
+
+        const targetArray = rosterData[`r${roundSel}`] || [];
+        const tbody = document.getElementById('rosterTableBody');
+        tbody.innerHTML = "";
+
+        allSubmissions.forEach(sub => {
+            const isChecked = targetArray.includes(sub.appId) ? "checked" : "";
+            tbody.innerHTML += `
+                <tr>
+                    <td style="text-align:center;"><input type="checkbox" class="roster-chk" value="${sub.appId}" style="width:25px; height:25px; cursor:pointer;" ${isChecked}></td>
+                    <td style="text-align:center; font-weight:bold; font-size:18px;">${sub.checkinData.contestNumber}</td>
+                    <td>${extractName(sub.answers)}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function selectAllRoster() { document.querySelectorAll('.roster-chk').forEach(chk => chk.checked = true); }
+    function clearAllRoster() { document.querySelectorAll('.roster-chk').forEach(chk => chk.checked = false); }
+
+    async function saveRoster() {
+        const roundSel = document.getElementById('rosterRoundSelect').value;
+        const checkboxes = document.querySelectorAll('.roster-chk:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+        rosterData[`r${roundSel}`] = selectedIds;
+        await db.collection("settings").doc("roster").set(rosterData, { merge: true });
+        alert(`✅ บันทึกรายชื่อผู้เข้าประกวดสำหรับ "รอบ ${roundSel}" จำนวน ${selectedIds.length} คน เรียบร้อยแล้ว!`);
+    }
+
+    // --- จัดการกรรมการ ---
+    async function loadJudges() {
+        const doc = await db.collection("settings").doc("judges").get();
+        if(doc.exists) judgesData = doc.data().list || [];
+        renderJudges();
+    }
+    function renderJudges() {
+        const tbody = document.getElementById('judgesTableBody');
+        tbody.innerHTML = "";
+        judgesData.forEach((j, i) => {
+            tbody.innerHTML += `<tr><td style="text-align:center;">${i+1}</td><td style="font-weight:bold; color:#2c3e50;">${j.name}</td><td style="text-align:center;"><button onclick="deleteJudge(${i})" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">ลบทิ้ง</button></td></tr>`;
+        });
+    }
+    async function addJudge() {
+        const name = document.getElementById('newJudgeName').value.trim();
+        if(!name) { alert("กรุณากรอกชื่อกรรมการ"); return; }
+        judgesData.push({ name: name });
+        await db.collection("settings").doc("judges").set({ list: judgesData });
+        document.getElementById('newJudgeName').value = "";
+        renderJudges();
+    }
+    async function deleteJudge(index) {
+        if(!confirm("ยืนยันลบกรรมการ?")) return;
+        judgesData.splice(index, 1);
+        await db.collection("settings").doc("judges").set({ list: judgesData });
+        renderJudges();
+    }
+
+    // --- ดึงคะแนน ---
+    async function loadScoresForRound(roundNum, tbodyId, chartId) {
+        // ดึงรายชื่อที่แอดมินเลือกไว้สำหรับรอบนี้
+        const rosterSnap = await db.collection("settings").doc("roster").get();
+        if(rosterSnap.exists) rosterData = Object.assign({ r1:[], r2:[], r3:[] }, rosterSnap.data());
+        const targetAppIds = rosterData[`r${roundNum}`] || [];
+
+        const scoresSnap = await db.collection("scores").where("round", "==", roundNum).get();
+        let tally = {}; 
+        scoresSnap.forEach(doc => {
+            if(doc.data().votes) doc.data().votes.forEach(appId => { tally[appId] = (tally[appId] || 0) + 1; });
+        });
+
+        let ranking = [];
+        // วนหาเฉพาะคนที่มีชื่อแข่งในรอบนี้
+        targetAppIds.forEach(appId => {
+            let sub = allSubmissions.find(s => s.appId === appId);
+            if(sub) {
+                ranking.push({
+                    appId: appId,
+                    number: sub.checkinData.contestNumber,
+                    name: extractName(sub.answers),
+                    score: tally[appId] || 0
+                });
+            }
+        });
+
+        ranking.sort((a, b) => b.score - a.score);
+        
+        if(roundNum === 1) cachedRankingR1 = ranking;
+        if(roundNum === 2) cachedRankingR2 = ranking;
+
+        const tbody = document.getElementById(tbodyId);
+        tbody.innerHTML = "";
+        let labels = []; let chartData = [];
+
+        ranking.forEach((r, i) => {
+            labels.push(`เบอร์ ${r.number}`);
+            chartData.push(r.score);
+            
+            let rankClass = "";
+            if(i===0) rankClass="rank-1"; else if(i===1) rankClass="rank-2"; else if(i===2) rankClass="rank-3";
+
+            tbody.innerHTML += `
+                <tr class="${rankClass}">
+                    <td style="text-align:center;">${i + 1}</td>
+                    <td style="font-weight:bold; font-size:18px;">หมายเลข ${r.number}</td>
+                    <td>${r.name}</td>
+                    <td style="font-size:18px; font-weight:bold; color:#27ae60; text-align:center;">${r.score} เสียง</td>
+                </tr>
+            `;
+        });
+
+        if(ranking.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:gray; padding:20px;">ไม่พบรายชื่อในรอบนี้ (กรุณาไปเพิ่มคนในแท็บ "จัดการรายชื่อผู้ประกวด" ก่อน)</td></tr>`;
+
+        const ctx = document.getElementById(chartId).getContext('2d');
+        if (roundNum === 1) {
+            if(chartInstanceR1) chartInstanceR1.destroy();
+            chartInstanceR1 = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'คะแนนโหวต (เสียง)', data: chartData, backgroundColor: '#3498db' }] }, options: { responsive: true, maintainAspectRatio: false } });
+        } else {
+            if(chartInstanceR2) chartInstanceR2.destroy();
+            chartInstanceR2 = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'คะแนนโหวต (เสียง)', data: chartData, backgroundColor: '#e67e22' }] }, options: { responsive: true, maintainAspectRatio: false } });
+        }
+    }
+
+    async function loadRound3Scores() {
+        const rosterSnap = await db.collection("settings").doc("roster").get();
+        if(rosterSnap.exists) rosterData = Object.assign({ r1:[], r2:[], r3:[] }, rosterSnap.data());
+        const targetAppIds = rosterData.r3 || [];
+
+        const scoresSnap = await db.collection("scores").where("round", "==", 3).get();
+        const confSnap = await db.collection("settings").doc("scoring_config").get();
+        if (!confSnap.exists) return;
+        const titles = confSnap.data().titles;
+
+        let tally = {}; 
+        titles.forEach(t => tally[t] = {});
+        cachedRankingR3 = {};
+
+        scoresSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.votes) {
+                for(let title in data.votes) {
+                    let appId = data.votes[title];
+                    if(appId && tally[title] !== undefined) tally[title][appId] = (tally[title][appId] || 0) + 1;
+                }
+            }
+        });
+
+        const resBox = document.getElementById('r3_results');
+        resBox.innerHTML = "";
+
+        titles.forEach(title => {
+            let candidates = [];
+            targetAppIds.forEach(appId => {
+                let sub = allSubmissions.find(s => s.appId === appId);
+                if(sub) {
+                    candidates.push({
+                        number: sub.checkinData.contestNumber,
+                        name: extractName(sub.answers),
+                        votes: tally[title][appId] || 0
+                    });
+                }
+            });
+            
+            candidates.sort((a,b) => b.votes - a.votes);
+            cachedRankingR3[title] = candidates; 
+
+            let tableHtml = `
+                <table style="margin-bottom:30px; border:2px solid #8e44ad;">
+                    <thead>
+                        <tr style="background:linear-gradient(135deg, #9b59b6, #8e44ad); color:white;">
+                            <th colspan="3" style="font-size:18px; text-align:center;">🏆 ${title}</th>
+                        </tr>
+                        <tr><th style="width:20%; text-align:center;">หมายเลข</th><th>ชื่อ-นามสกุล</th><th style="width:25%; text-align:center;">ได้คะแนน (เสียง)</th></tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            if(candidates.length === 0) {
+                tableHtml += `<tr><td colspan="3" style="text-align:center; color:gray; padding:20px;">ไม่มีผู้สมัครในรอบนี้</td></tr>`;
+            } else {
+                candidates.forEach((c, i) => {
+                    let hl = (i===0 && c.votes > 0) ? 'background:#fff3cd; font-weight:bold; color:#d35400;' : ''; 
+                    tableHtml += `
+                        <tr style="${hl}">
+                            <td style="text-align:center; font-size:18px; font-weight:bold;">หมายเลข ${c.number}</td>
+                            <td>${c.name}</td>
+                            <td style="text-align:center; font-size:16px; font-weight:bold; color:${c.votes===0 ? '#999' : '#000'};">${c.votes}</td>
+                        </tr>
+                    `;
+                });
+            }
+            tableHtml += `</tbody></table>`;
+            resBox.innerHTML += tableHtml;
+        });
+    }
+
+    function exportPDF(elementId, filename) {
+        const element = document.getElementById(elementId);
+        const originalWidth = element.style.width;
+        element.style.width = '1000px';
+
+        const opt = {
+            margin:       10,
+            filename:     `${filename}_${new Date().getTime()}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, windowWidth: 1000 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => { element.style.width = originalWidth; });
+    }
+
+    function exportScoreCSV(roundNum) {
+        let rankingData = roundNum === 1 ? cachedRankingR1 : cachedRankingR2;
+        if(rankingData.length === 0) { alert("ยังไม่มีข้อมูลคะแนนโหวตครับ"); return; }
+        let csv = "อันดับโหวต,หมายเลข,ชื่อ-นามสกุล,คะแนนเสียงที่ได้\n";
+        rankingData.forEach((r, i) => { csv += `"${i+1}","หมายเลข ${r.number}","${r.name}","${r.score}"\n`; });
+        triggerDownloadCSV(csv, `สรุปคะแนน_รอบที่_${roundNum}_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function exportRound3CSV() {
+        if(Object.keys(cachedRankingR3).length === 0) { alert("ยังไม่มีข้อมูลคะแนนโหวตครับ"); return; }
+        let csv = "ตำแหน่งรางวัล,อันดับคะแนน,หมายเลข,ชื่อ-นามสกุล,คะแนนเสียงที่ได้\n";
+        for (let title in cachedRankingR3) {
+            let candidates = cachedRankingR3[title];
+            candidates.forEach((c, i) => { csv += `"${title}","${i+1}","หมายเลข ${c.number}","${c.name}","${c.votes}"\n`; });
+        }
+        triggerDownloadCSV(csv, `สรุปคะแนน_รอบตัดสิน_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function triggerDownloadCSV(csvContent, filename) {
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename; link.click();
+    }
+
+    loadData();
+</script>
+</body>
+</html>

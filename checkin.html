@@ -19,7 +19,7 @@
             background-attachment: fixed;
             background-position: center;
             color: #333; 
-            padding: 10px; /* ลด padding สำหรับมือถือ */
+            padding: 10px;
             margin: 0; 
             transition: background 0.5s;
         }
@@ -39,16 +39,13 @@
         .form-body { padding: 20px; }
         h1 { text-align: center; color: var(--primary-color); margin-top: 0; border-bottom: 2px dashed #bdc3c7; padding-bottom: 15px; font-size: 22px; }
         
-        /* 🌟 โซน Login */
         #loginArea { display: flex; flex-direction: column; gap: 15px; padding: 20px 0; animation: fadeIn 0.4s; }
         .login-input { padding: 15px; font-size: 16px; border: 2px solid #bdc3c7; border-radius: 8px; font-family: 'Prompt'; outline: none; width: 100%; box-sizing: border-box; }
         .login-input:focus { border-color: var(--primary-color); }
         .btn-login { background: var(--primary-color); color: white; border: none; padding: 15px; font-size: 18px; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-weight: 600; width: 100%; }
 
-        /* 🌟 โซนระบบหลัก (ซ่อนจนกว่าจะ Login) */
         #mainAppArea { display: none; animation: fadeIn 0.4s; }
 
-        /* โซนค้นหา (ปรับสำหรับมือถือ) */
         .search-box { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
         .search-box input { padding: 15px; font-size: 16px; border: 2px solid #bdc3c7; border-radius: 8px; font-family: 'Prompt'; outline: none; width: 100%; box-sizing: border-box; }
         .search-box input:focus { border-color: var(--primary-color); }
@@ -64,7 +61,6 @@
         .status-waiting { background: #f1c40f; color: #8a6d3b; }
         .status-checked { background: #2ecc71; color: white; }
 
-        /* โซนเช็คอิน */
         #checkInArea { display: none; background: #fff; border: 2px solid var(--primary-color); padding: 20px; border-radius: 12px; margin-top: 20px; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
         
@@ -94,12 +90,15 @@
         
         .btn-reset { width: 100%; background: #fff; color: #e74c3c; border: 2px solid #e74c3c; padding: 12px; font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; margin-top: 10px; font-family: 'Prompt'; }
 
-        /* แผงควบคุม (ปรับเป็นแนวตั้งสำหรับมือถือ) */
-        .admin-panel { margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; display: flex; flex-direction: column; gap: 15px; text-align: center; }
-        .stats-text { font-size: 15px; color: #555; background: #f1f2f6; padding: 15px; border-radius: 8px; }
-        .btn-export { background: #8e44ad; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-weight: 500; width: 100%; font-size: 16px; }
-        .btn-delete-all { background: #c0392b; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-weight: 500; width: 100%; font-size: 16px; margin-top: 5px; }
-        .btn-logout { background: #7f8c8d; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-weight: 500; width: 100%; margin-top: 20px; }
+        .admin-panel { margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+        .stats-text { font-size: 15px; color: #555; background: #f1f2f6; padding: 15px; border-radius: 8px; margin-bottom: 5px;}
+        
+        /* สไตล์ปุ่ม Admin */
+        .btn-action { color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-family: 'Prompt'; font-weight: 500; width: 100%; font-size: 16px; }
+        .bg-export { background: #8e44ad; }
+        .bg-checkin-all { background: #27ae60; }
+        .bg-delete-all { background: #e74c3c; }
+        .bg-logout { background: #7f8c8d; margin-top: 15px; }
 
         #imgModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
         #imgModal img { max-width: 95%; max-height: 90%; border-radius: 8px; border: 3px solid white; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
@@ -157,8 +156,7 @@
                 </div>
 
                 <h3 style="font-size: 15px; color: #444; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">📸 รูปภาพเอกสาร</h3>
-                <div class="image-gallery" id="ci_images">
-                    </div>
+                <div class="image-gallery" id="ci_images"></div>
 
                 <div class="verification-box">
                     <div class="checkbox-row">
@@ -186,10 +184,12 @@
                     รายงานตัวแล้ว <span id="statCheckedIn" style="font-weight:bold; color:#27ae60; font-size:22px;">0</span> / 
                     <span id="statTotal" style="font-size:18px;">0</span> คน
                 </div>
-                <button class="btn-export" onclick="exportCheckInCSV()">📥 Export รายงานตัว (CSV)</button>
-                <button class="btn-delete-all" onclick="clearAllCheckinData()">🗑️ ล้างข้อมูลการเช็คอินทั้งหมด (เริ่มใหม่)</button>
                 
-                <button class="btn-logout" onclick="processLogout()">🚪 ออกจากระบบ</button>
+                <button class="btn-action bg-export" onclick="exportCheckInCSV()">📥 Export รายงานตัว (CSV)</button>
+                <button class="btn-action bg-checkin-all" onclick="checkInAllData()">✅ รายงานตัวให้ทุกคน (รันเบอร์อัตโนมัติ)</button>
+                <button class="btn-action bg-delete-all" onclick="clearAllCheckinData()">🗑️ ล้างข้อมูลการเช็คอินทั้งหมด (เริ่มใหม่)</button>
+                
+                <button class="btn-action bg-logout" onclick="processLogout()">🚪 ออกจากระบบ</button>
             </div>
         </div>
     </div>
@@ -216,43 +216,34 @@
     let questionsConfig = []; 
     let currentCheckInId = "";
 
-    // 🌟 ระยะเวลาล็อกอิน 1 ชั่วโมง (มิลลิวินาที)
     const SESSION_DURATION = 60 * 60 * 1000; 
 
     async function initApp() {
         document.getElementById('loadingText').innerText = "กำลังเชื่อมต่อระบบ...";
         try {
-            // โหลดแอดมิน
             const adminsDoc = await db.collection("settings").doc("admins").get();
             if (adminsDoc.exists) adminUsers = adminsDoc.data().users || [];
 
-            // โหลด Theme
             const themeDoc = await db.collection("settings").doc("theme").get();
             if (themeDoc.exists) {
                 const theme = themeDoc.data();
                 if(theme.bannerUrl) { document.getElementById('bannerDisplay').src = theme.bannerUrl; document.getElementById('bannerDisplay').style.display = 'block'; }
                 if(theme.backgroundUrl) document.body.style.backgroundImage = `url('${theme.backgroundUrl}')`;
             }
-
-            // เช็ค Session การล็อกอิน
             checkSession();
-            
         } catch (error) { 
             alert("โหลดข้อมูลขัดข้อง: " + error.message); 
             document.getElementById('loadingOverlay').style.display = 'none';
         }
     }
 
-    // 🌟 ระบบตรวจสอบ Session
     function checkSession() {
         const sessionTime = localStorage.getItem('checkin_login_time');
         const now = new Date().getTime();
 
         if (sessionTime && (now - parseInt(sessionTime)) < SESSION_DURATION) {
-            // ยังไม่หมดเวลา ให้เข้าสู่ระบบเลย
             showMainApp();
         } else {
-            // หมดเวลา หรือยังไม่เคยล็อกอิน
             localStorage.removeItem('checkin_login_time');
             document.getElementById('loginArea').style.display = 'flex';
             document.getElementById('mainAppArea').style.display = 'none';
@@ -260,7 +251,6 @@
         }
     }
 
-    // 🌟 ระบบ Login
     async function processLogin() {
         const u = document.getElementById('loginUser').value.trim();
         const p = document.getElementById('loginPass').value.trim();
@@ -269,7 +259,6 @@
 
         const foundUser = adminUsers.find(user => user.username === u && user.password === p);
         if (foundUser) {
-            // บันทึกเวลาล็อกอิน
             localStorage.setItem('checkin_login_time', new Date().getTime().toString());
             showMainApp();
         } else { 
@@ -279,10 +268,9 @@
 
     function processLogout() {
         localStorage.removeItem('checkin_login_time');
-        location.reload(); // รีเฟรชหน้าเพื่อเคลียร์ความจำและกลับไปหน้า Login
+        location.reload(); 
     }
 
-    // โชว์แอปหลัก และดึงข้อมูลผู้สมัคร
     async function showMainApp() {
         document.getElementById('loginArea').style.display = 'none';
         document.getElementById('mainAppArea').style.display = 'block';
@@ -311,17 +299,14 @@
         }
         for (let key in answersObj) {
             let val = answersObj[key];
-            if (typeof val === 'string' && val.length > 2 && !val.includes('http') && !val.startsWith('data:image')) {
-                return val;
-            }
+            if (typeof val === 'string' && val.length > 2 && !val.includes('http') && !val.startsWith('data:image')) return val;
         }
         return extractedName;
     }
 
-    // 🌟 ระบบแสดงรายชื่อทั้งหมด
     function showAllData() {
-        document.getElementById('searchInput').value = ""; // เคลียร์ช่องค้นหา
-        renderResultList(allSubmissions); // ส่งข้อมูลทั้งหมดไป render
+        document.getElementById('searchInput').value = ""; 
+        renderResultList(allSubmissions); 
     }
 
     function searchData() {
@@ -338,7 +323,6 @@
         renderResultList(results);
     }
 
-    // ฟังก์ชันสร้างรายการบนหน้าจอ
     function renderResultList(resultsArray) {
         const resultList = document.getElementById('searchResultList');
         resultList.innerHTML = "";
@@ -425,7 +409,6 @@
         
         validateForm();
         
-        // เลื่อนหน้าจอลงมาหาช่องกรอก เพื่อความสะดวกบนมือถือ
         document.getElementById('searchResultList').innerHTML = "";
         const checkInBox = document.getElementById('checkInArea');
         checkInBox.style.display = 'block';
@@ -474,8 +457,58 @@
         }
     }
 
+    // 🌟 ระบบ "รายงานตัวทุกคน" (Auto Check-in)
+    async function checkInAllData() {
+        if(!confirm("⚠️ คำเตือน: คุณต้องการ 'รายงานตัวให้ผู้สมัครทุกคน' ใช่หรือไม่?\n\n(ระบบจะสุ่มรันหมายเลขประกวดให้ทุกคนอัตโนมัติ)")) return;
+        
+        const confirmText = prompt("พิมพ์คำว่า 'ยืนยัน' เพื่อดำเนินการรายงานตัวทุกคน:");
+        if (confirmText !== "ยืนยัน") {
+            alert("❌ ยกเลิกการทำรายการ");
+            return;
+        }
+
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        document.getElementById('loadingText').innerText = "กำลังรายงานตัวให้ทุกคน...";
+
+        try {
+            // เรียงลำดับผู้สมัครตาม appId เพื่อรันเบอร์ให้สวยงาม
+            let sortedSubs = [...allSubmissions];
+            sortedSubs.sort((a, b) => a.appId.localeCompare(b.appId));
+
+            let promises = [];
+            let counter = 1;
+
+            sortedSubs.forEach(sub => {
+                // รันเบอร์ 01, 02, 03...
+                let contestNum = counter < 10 ? "0" + counter : "" + counter;
+                counter++;
+
+                const checkinData = {
+                    status: true,
+                    contestNumber: contestNum,
+                    checkInTime: new Date().toLocaleString('th-TH'),
+                    verifiedPhoto: true,
+                    verifiedIdCard: true
+                };
+
+                promises.push(db.collection("submissions").doc(sub.appId).set({
+                    checkinData: checkinData
+                }, { merge: true }));
+            });
+
+            await Promise.all(promises);
+
+            alert("✅ รายงานตัวให้ผู้สมัครทุกคน และรันหมายเลขสำเร็จ!");
+            await fetchSubmissions();
+            closeCheckIn();
+        } catch(e) { 
+            alert("เกิดข้อผิดพลาด: " + e.message); 
+        }
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
     async function resetCheckIn() {
-        if(!confirm("⚠️ ยืนยันการล้างข้อมูลเช็คอินของคนนี้ใช่หรือไม่?\n\n(สถานะจะกลับไปเป็น 'รอรายงานตัว' ทันที)")) return;
+        if(!confirm("⚠️ ยืนยันการล้างข้อมูลเช็คอินของคนนี้ใช่หรือไม่?")) return;
         
         document.getElementById('loadingOverlay').style.display = 'flex';
         document.getElementById('loadingText').innerText = "กำลังยกเลิกการรายงานตัว...";
@@ -491,20 +524,16 @@
         document.getElementById('loadingOverlay').style.display = 'none';
     }
 
-    // 🌟 ระบบล้างข้อมูลเช็คอินทั้งหมด
     async function clearAllCheckinData() {
-        // ดักชั้นที่ 1
-        if(!confirm("⚠️ คำเตือน: คุณต้องการ 'ล้างข้อมูลการเช็คอิน' ของผู้สมัครทุกคนใช่หรือไม่?\n\n(ข้อมูลการสมัครจะยังอยู่ แต่สถานะเช็คอินจะกลับไปเป็น 'รอรายงานตัว' ทั้งหมด)")) return;
+        if(!confirm("⚠️ คำเตือน: คุณต้องการ 'ล้างข้อมูลการเช็คอิน' ของผู้สมัครทุกคนใช่หรือไม่?")) return;
         
-        // ดักชั้นที่ 2 (พิมพ์ยืนยัน)
-        const confirmText = prompt("พิมพ์คำว่า 'ยืนยัน' ด้านล่างเพื่อดำเนินการล้างข้อมูลเช็คอินทั้งหมด:");
+        const confirmText = prompt("พิมพ์คำว่า 'ยืนยัน' ด้านล่างเพื่อล้างข้อมูลเช็คอินทั้งหมด:");
         if (confirmText === "ยืนยัน") {
             document.getElementById('loadingOverlay').style.display = 'flex';
             document.getElementById('loadingText').innerText = "กำลังล้างข้อมูลเช็คอินทั้งหมด...";
             
             try {
                 const snapshot = await db.collection("submissions").get();
-                // วนลูปเตะฟิลด์ checkinData ทิ้งทุกคน
                 const deletePromises = snapshot.docs.map(doc => {
                     return doc.ref.update({
                         checkinData: firebase.firestore.FieldValue.delete()
@@ -513,7 +542,7 @@
                 await Promise.all(deletePromises);
                 
                 alert("✅ ล้างข้อมูลการเช็คอินทั้งหมดเรียบร้อยแล้ว! (ทุกคนกลับไปสถานะรอรายงานตัว)");
-                await fetchSubmissions(); // อัปเดตตาราง
+                await fetchSubmissions(); 
                 closeCheckIn();
             } catch(e) { 
                 alert("เกิดข้อผิดพลาด: " + e.message); 
@@ -548,7 +577,6 @@
         link.click();
     }
 
-    // เริ่มทำงาน
     initApp();
 </script>
 </body>
